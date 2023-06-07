@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jun  6 22:53:51 2023
+
+@author: sammi
+"""
+import numpy as np
+import scipy as sp
+import pandas as pd
+import mne
+import sklearn as skl
+from copy import deepcopy
+import os
+import os.path as op
+import sys
+from matplotlib import pyplot as plt
+%matplotlib
+
+# sys.path.insert(0, '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty/analysis/tools')
+sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+from funcs import getSubjectInfo
+
+# wd = '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty' #workstation wd
+wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+os.chdir(wd)
+
+
+subs = np.array([10, 11])
+for i in subs:
+    sub   = dict(loc = 'laptop', id = i)
+    param = getSubjectInfo(sub)
+    
+    raw = mne.io.read_raw_curry(fname = param['raweeg'], preload = True)
+    
+    raw = mne.add_reference_channels(raw, ref_channels = 'M2', copy = False) #left mastoid was active reference, add it back in (empty channel)
+    raw.rename_channels({'RM':'M1'})
+    
+    #create bipolar eog channel from EOGL (lower eye electrode) and referencing it to FP1 (above left eye)
+    raw = mne.set_bipolar_reference(raw, drop_refs = False, #keep these channels in the data so we keep FP1
+                                    anode = 'EOGL', cathode = 'FP1', ch_name = 'VEOG')
+    raw.set_channel_types(mapping = {
+        'VEOG':'eog',
+        'HEOG': 'eog',
+        'M1':'misc', 
+        'M2':'misc',
+        'EOGL':'misc', 
+        'Trigger':'misc'
+        })
+    
+    raw.set_eeg_reference(ref_channels = ['M1', 'M2']) #set reference to average mastoid
+    raw.set_montage('easycap-M1', on_missing='raise', match_case = False)
+    
+    raw.filter(0.1, 40) #filter between 0.1 and 40 Hz
+    
+    raw.info['bads'] = deepcopy(param['badchans'])
+    raw.info['bads'].extend(['AFz']) #AFz was the ground, we want to interpolate it
+    
+    raw.interpolate_bads() #interpolate bad channels
+    
+    ica = mne.preprocessing.ICA(n_components = .99, method = 'fastica').fit(raw, reject = dict(eeg=300e-6))
+    #this will exclude noisy segments of data from the ICA that can cause it to fail to be useful
+    #this basically just excludes periods between blocks where ppts took breaks as they move a lot then
+    
+    eog_epochs = mne.preprocessing.create_eog_epochs(raw)
+    eog_inds, eog_scores = ica.find_bads_eog(eog_epochs)
+    ica.plot_scores(eog_scores, eog_inds)
+    
+    ica.plot_components(inst=raw)
+    print('subject %d, %d components to remove:'%(i, len(eog_inds)))
+    
+    comps = ica.get_sources(inst=raw)
+    c = comps.get_data()
+    rsac = np.empty(shape = (c.shape[0]))
+    rblk = np.empty(shape = (c.shape[0]))
+    heog = raw.get_data(picks = 'HEOG').squeeze()
+    veog = raw.get_data(picks = 'VEOG').squeeze()
+    for comp in range(len(c)):
+        rsac[comp] = sp.stats.pearsonr(c[comp,:], heog)[0]
+        rblk[comp] = sp.stats.pearsonr(c[comp,:], veog)[0]
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(2,1,1)
+    ax.bar(np.arange(len(c)), rsac)
+    ax.set_title('corr with heog')
+    
+    ax2 = fig.add_subplot(2,1,2)
+    ax2.bar(np.arange(len(c)), rblk)
+    ax2.set_title('corr with veog')
+    fig.tight_layout()
+   
+    plt.pause(3)
+    
+    comps2rem = input('components to remove: ') #need to separate component numbers by comma and space
+    comps2rem = list(map(int, comps2rem.split(', ')))
+    np.savetxt(fname = op.join(param['path'], 'removed_comps', 's%02d_removedcomps.txt'%i),
+               X = comps2rem, fmt = '%i') #record what components were removed
+    ica.exclude.extend(comps2rem) #mark components for removal
+    ica.apply(inst=raw)
+    
+    raw.save(fname = param['eeg_preproc'], fmt = 'double', overwrite = True)
+    plt.close('all')
+    
+    
+    
