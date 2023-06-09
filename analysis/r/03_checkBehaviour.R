@@ -18,10 +18,11 @@ theme_set(theme_bw() +
 )
 # theme_set(theme_bw() + theme(strip.background = element_blank()))
 se <- function(x) sd(x)/sqrt(length(x))
-subs = seq(3,11,by=1) #these are the eeg subjects
+subs = seq(3,12,by=1) #these are the eeg subjects
 
 df <- read.csv(fname, as.is = T, header = T)
-df %<>% dplyr::filter(subid != 8)
+df %<>% dplyr::filter(subid != 8) %>%
+  dplyr::filter(subid != 4) %>% dplyr::filter(subid != 5)
 
 df %>%
   dplyr::group_by(subid, difficultyOri) %>%
@@ -72,6 +73,7 @@ df.acc %>%
   labs(x = 'perceptual difficulty (°)', y = 'proportion correct') + theme(legend.position = 'none')
 
 df %>% dplyr::mutate(difficultyOri = as.factor(difficultyOri)) %>%
+  dplyr::filter(PerceptDecCorrect == 1) %>%
   dplyr::group_by(subid, difficultyOri) %>%
   dplyr::summarise_at(.vars = 'rt', .funs = 'mean', na.rm = T) %>% as.data.frame() -> df.rt
 

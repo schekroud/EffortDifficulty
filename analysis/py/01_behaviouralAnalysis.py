@@ -47,10 +47,25 @@ for sub in subs:
 #need to get whether a trial was a switch or stay trial (in the participants behaviour)
 subids = df.subid.unique().tolist()
 
-subs2use = [3, 4, 5, 6, 7, 8, 9, 10]
-subs2use = [3, 4, 5, 6, 7,    9, 10] #4/5 had wrong difficulties, 8 was sleepy
+subs2use = [3, 4, 5, 6, 7, 8, 9, 10, 11]
+subs2use = [3, 4, 5, 6, 7,    9, 10, 11] #4/5 had wrong difficulties, 8 was sleepy
 
 df = df.query('subid in @subs2use')
+
+#plot example difficulty schedule to print out
+plotexample = False
+if plotexample:
+    tmpdata = df.query('subid == 3 and blocknumber == 1')
+    
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(tmpdata.trialnumber, tmpdata.difficultyOri, lw = 3, ls = 'solid', color = '#3182bd')
+    ax.set_xlabel('trial number')
+    ax.set_ylabel('judgement difficulty (°)')
+    fig.savefig(fname = op.join(wd, 'figures', 'ExampleDifficultySchedule.eps'), format = 'eps', dpi = 300)
+    fig.savefig(fname = op.join(wd, 'figures', 'ExampleDifficultySchedule.pdf'), format = 'pdf', dpi = 300)
+
 
 #%%
 dat_acc = pd.DataFrame()

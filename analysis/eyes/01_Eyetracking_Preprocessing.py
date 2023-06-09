@@ -15,6 +15,9 @@ import os.path as op
 import sys
 from matplotlib import pyplot as plt
 import pickle
+import sklearn as skl
+from sklearn import *
+%matplotlib
 
 sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
 import eyefuncs as eyes
@@ -24,7 +27,7 @@ os.chdir(wd)
 
 eyedir = op.join(wd, 'data', 'eyes')
 
-subs = [3, 4, 5, 7, 9, 10, 11]
+subs = [3, 4, 5, 7, 8, 9, 10, 11]
 
 plot_steps = False
 #%%
@@ -32,7 +35,7 @@ subdata = []
 subcount = 0
 for sub in subs:
     subcount +=1
-    print('working on participant %01d/%1d'%(subcount, len(subs)))
+    print('\n- - - - - - working on participant %s (%01d/%1d) - - - - - -\n'%(str(sub), subcount, len(subs)))
     fname = 'EffDS%02da.asc'%sub #get the asc file name
     savename = 'EffDS%02da_preproc.pickle'%sub
     savename = op.join(eyedir, 'preprocessed',  savename)
@@ -67,28 +70,38 @@ for sub in subs:
             if not op.exists(rawname):
                 with open(rawname, 'wb') as handle:
                     pickle.dump(data, handle)
-        
-        # if sub == 6:
-        #     #remove last block of data
-        #     data = data[:-1]
-        
-        nblocks = len(data)
-        ds = deepcopy(data) #only used for plotting the raw, uninterpolated traces later
-        #this will just nan any points that aren't possible with the screen dimensions you have (something went wrong, or tracker fritzed)
-        print('\nreplacing datapoints found outside the screen dimensions')
-        data = eyes.replace_points_outside_screen(data = data, nblocks = nblocks,
-                                                  screen_dim = [1920, 1080],
-                                                  adjust_pupils = False)
-        
             
-        #first, if they had a PLR routine then we need to cut this out of the data
+            
+        #first, if they had a PLR routine then we need to cut this out of the data as it can cause issues down the line
         print('removing the PLR data')
         data = eyes.remove_before_task_start(data,
-                                             snip_amount = 3, #seconds)
+                                             snip_amount = 4, #seconds)
                                              srate = 1000)
         
+        #this removes eyelink messages that we aren't going to use. keeps data size smaller and less clunky
+        data = eyes.drop_eyelink_messages(data)
+        ds = deepcopy(data) #useful for plotting raw data traces to check preprocessing effects
+        
         #and we will snip the end of each block to make it end shortly after the last trigger of the task
-        data = eyes.snip_end_of_blocks(data, snip_amount = 2, srate = 1000)
+        data = eyes.snip_end_of_blocks(data, snip_amount = 3, srate = 1000)
+
+        
+        #plot each block of pupil stacked so we can just look
+        # fig = plt.figure()
+        # for iblock in range(len(data)):
+        #     ax = fig.add_subplot(len(data), 1, iblock+1)
+        #     ax.plot(data[iblock]['trackertime'], data[iblock]['p'], lw = 1, color = '#3182bd')
+        #     ax.plot(data[iblock]['trackertime'], np.where(data[iblock]['p'] == 0, np.nan, data[iblock]['p']), color = '#31a354', lw=1)
+        #     ax.set_title('block '+str(iblock+1))
+        
+        
+        #this sets periods where the pupil trace is zero (missing data) to nan (making it properly missing)
+        # data = eyes.nan_missingdata(data)
+        
+        #next step is to nan the period around blinks as this is usually noisy and contaminated
+        
+        
+        #and we will snip the end of each block to make it end shortly after the last trigger of the task
         
         
         time = deepcopy(data[0]['trackertime']) - data[0]['trackertime'][0]
@@ -96,84 +109,31 @@ for sub in subs:
         print('\nfinding blinks from the pupil trace')
         data_cleaned = eyes.cleanblinks_usingpupil(data, nblocks = nblocks)
         
-        #finds all the missing periods (nans) in the data
-        print('identifying nan periods in the data to be cleaned')
-        data_cleaned = eyes.find_missing_periods(data_cleaned, nblocks = nblocks)
+        #visualise the effect of this
         
-        #check in case there are missing data periods at the start of the recording as this messes up preproc a lot
-        #after first finding missing data periods, it specifies these as 'blinks'
-        #if a blink duration is negative, it means that an earlier (e.g. the first blink) didn't have a start, so it goes end of first  -> start of second
-        #this next function checks for nans at the start of the recording (i.e. if it starts with missing data) which causes this
-        print('checking if the recording starts with missing data')
-        data_cleaned = eyes.check_nansatstart(data_cleaned)
+        # fig = plt.figure()
+        # for iblock in range(len(data)):
+        #     tmpdata = deepcopy(data_cleaned[iblock])
+        #     tmpp = deepcopy(tmpdata['p'])
+        #     tmpp[tmpdata['badsamps']] = np.nan
+        #     ax = fig.add_subplot(len(data), 1, iblock+1)
+        #     ax.plot(ds[iblock]['trackertime'], ds[iblock]['p'], lw = 1, color = '#3182bd', label = 'pupil')
+        #     ax.plot(tmpdata['trackertime'], tmpp, lw = 1, color = '#fdae6b')
         
-        #finds all the missing periods (nans) in the data again after correcting the start of the recording where necessary
-        print('identifying nan periods in the data to be cleaned')
-        data_cleaned = eyes.find_missing_periods(data_cleaned, nblocks = nblocks)
+        #data_cleaned has bad samples as nans and no other information stored. can probably pass this on for future stuff.
         
-        datcop = deepcopy(data_cleaned)
-        blockid = 1
+        data_t = eyes.transform_pupil(data_cleaned)
         
+        fig = plt.figure()
+        for iblock in range(len(data)):
+            ax = fig.add_subplot(len(data), 1, iblock+1)
+            # ax.plot(ds[iblock]['trackertime'], ds[iblock]['p'], lw = 1, color = '#3182bd', label = 'pupil')
+            ax.plot(data_t[iblock]['trackertime'], data_t[iblock]['p_perc'], lw = 1, color = '#fdae6b')
         
-        interpolateBlinks = False
-        if interpolateBlinks:
-            if datcop[0]['binocular']:
-                clean_traces = ['lp', 'rp', 'lx', 'rx', 'ly', 'ry']
-            elif not datcop[0]['binocular']: #monocular data
-                clean_traces = ['x', 'y', 'p']
-            print('\ninterpolating over nan periods')
-            for block in range(len(data_cleaned)):
-                print('cleaning data for block %02d/%02d'%(block+1,nblocks))
-                for trace in clean_traces:
-                    data_cleaned[block] = eyes.interpolateBlinks_Blocked(data_cleaned[block],trace)
-                    #there is a problem with this function - some of the blinks end the signal on a nan value so it interpolates nans and doesn't clean the signal at all.
-                    #its off by one sample for some reason (usually)
-                blockid +=1
-            
-            
-        data_cleaned = eyes.transform_pupil(data_cleaned)    
+        #save this data (nan periods are left as is and not interpolated)
         
-    subdata.append(data_cleaned)
+        if not op.exists(savename):
+            print('\nsaving the preprocessed data to file')
+            with open(savename, 'wb') as handle:
+                pickle.dump(data_cleaned, handle)
     
-    for block in range(len(data_cleaned)):
-        if data_cleaned[0]['binocular']:
-            print(np.isnan(data_cleaned[block]['lp']).sum())
-        elif not data_cleaned[0]['binocular']:
-            print(np.isnan(data_cleaned[block]['p']).sum())
-    
-    #check quality of blink removal
-    # blockid = 3
-    # tmpplot = deepcopy(data_cleaned)[blockid]['p']
-    # lpmin = np.nanmin(data_cleaned[blockid]['p'])
-    # lpmax = np.nanmax(data_cleaned[blockid]['p'])
-    # tmpblinks = deepcopy(data_cleaned[blockid])['Eblk_p']
-    # missingstarts = np.array(tmpblinks)[:,1].astype(int).tolist()
-    # missingends   = np.array(tmpblinks)[:,2].astype(int).tolist()
-    # plt.figure()
-    # plt.plot(ds[blockid]['p'], color = '#bdbdbd', label = 'raw data')
-    # plt.plot(tmpplot, color = '#696969', label = 'cleaned data')
-    # plt.vlines(x = missingstarts, ymin = lpmin, ymax = lpmax, ls = 'dashed', color = '#6baed6', lw = 1)
-    # plt.vlines(x = missingends, ymin = lpmin, ymax = lpmax, ls = 'dashed', color = '#f16913', lw = 1)
-    # plt.vlines(x = 919963, ymin = lpmin, ymax = lpmax, ls = 'dashed', color = '#000000', lw = 2)
-    # plt.title('subject %02d pupil, check preproc quality'%sub)
-    # plt.legend(loc='lower right')
-    
-    # tmpplot = deepcopy(data_cleaned)[blockid]['x']
-    # lpmin = np.nanmin(data_cleaned[blockid]['x'])
-    # lpmax = np.nanmax(data_cleaned[blockid]['x'])
-    # tmpblinks = deepcopy(data_cleaned[blockid])['Eblk_x']
-    # missingstarts = np.array(tmpblinks)[:,1].astype(int).tolist()
-    # missingends   = np.array(tmpblinks)[:,2].astype(int).tolist()
-    # plt.figure()
-    # plt.plot(ds[blockid]['x'], color = '#bdbdbd', label = 'raw data')
-    # plt.plot(tmpplot, color = '#696969', label = 'cleaned data')
-    # # plt.vlines(x = missingstarts, ymin = 0, ymax = 1920, ls = 'dashed', color = '#6baed6', lw = 0.5)
-    # # plt.vlines(x = missingends, ymin = 0, ymax = 1920, ls = 'dashed', color = '#f16913', lw = 0.5)
-    # plt.title('subject %02d x, check preproc quality'%sub)
-    
-    if not op.exists(savename):
-        print('\nsaving the preprocessed data to file')
-        with open(savename, 'wb') as handle:
-            pickle.dump(data_cleaned, handle)
-#%%
-            

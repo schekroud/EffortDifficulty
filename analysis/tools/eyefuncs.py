@@ -792,6 +792,17 @@ def remove_before_task_start(data, snip_amount = 1.5, srate = 1000):
     blocktrigs = blocktrigs[~PLRtrigs] #remove the PLR triggers
     block['Msg'] = blocktrigs
     
+    #also need to remove other things (blink/fixation messages) that occur before the start of the task block
+    #remove Efix events in before task period
+    ttime = block['trackertime'][0].astype(int)
+    block['Efix'] = block['Efix'][np.greater_equal(block['Efix'][:,2].astype(int),ttime),:]
+    block['Sfix'] = block['Sfix'][np.greater_equal(block['Sfix'][:,2].astype(int),ttime),:]
+    block['Esac'] = block['Esac'][np.greater_equal(block['Esac'][:,2].astype(int),ttime),:]
+    block['Ssac'] = block['Ssac'][np.greater_equal(block['Ssac'][:,2].astype(int),ttime),:]
+    block['Eblk'] = block['Eblk'][np.greater_equal(block['Eblk'][:,2].astype(int),ttime),:]
+    block['Sblk'] = block['Sblk'][np.greater_equal(block['Sblk'][:,2].astype(int),ttime),:]
+
+    
     ds[0] = block
     return ds
     
@@ -820,7 +831,7 @@ def cleanblinks_usingpupil(data, nblocks, signals_to_clean = ['x', 'y'], eyes = 
     blinkspd        = 2.5                                   #speed above which data is remove around nan periods -- threshold
     maxvelthresh    = 30
     maxpupilsize    = 20000
-    cleanms         = 100                                    #ms
+    cleanms         = 100                                    #ms padding around the blink edges for removal
     if binocular:
         traces_to_scan  = ['lp', 'lx', 'ly', 'rp', 'rx', 'ry']  #the namings of possible traces
     elif not binocular:
@@ -1525,6 +1536,75 @@ def nanzscore(vector, zero_out_nans = True):
             
             return vector
 
+
+def drop_eyelink_messages(data):
+    nblocks = len(data)
+    for iblock in range(nblocks):
+        tmpblock = deepcopy(data[iblock])
+        del(tmpblock['Efix'], tmpblock['Sfix'], tmpblock['Esac'], tmpblock['Ssac'],
+            tmpblock['Eblk'], tmpblock['Sblk'])
+        data[iblock] = tmpblock
+    
+    return data
+
+
+def nan_missingdata(data):
+    '''
+    notes:
+        - this assumes monocular data just for ease
+        - only works on pupil data as designed for pupillometry cleaning
+    
+    '''
+    nblocks = len(data)
+    
+    for iblock in range(nblocks):
+        tmpdata = deepcopy(data[iblock])
+        tmpp = deepcopy(tmpdata['p'])
+        tmpp = np.where(tmpp ==0, np.nan, tmpp)
+        data[iblock]['p'] = tmpp #set this back
+        
+    return data
+
+def removePeriodAroundBlinks(data, cleanbefore = 50, cleanafter = 100):
+    '''
+    notes:
+        - this assumes monocular data just for ease
+        - only works on pupil data as designed for pupillometry cleaning
+    
+    '''
+    nblocks = len(data)
+    
+    for iblock in range(nblocks): #loop over blocks of data
+            tmpdata = deepcopy(data[iblock])
+            tmpp = deepcopy(tmpdata['p']) #get the pupil trace
+            
+            #find nans
+            pupil_nans = np.isnan(tmpp).astype(int)
+            nanchange = np.diff(pupil_nans)
+            
+            # fig = plt.figure(); ax = fig.add_subplot(111)
+            # ax.plot(pupil_nans, color = 'b')
+            # ax.plot(nanchange, color = 'r')
+            
+            nanstarts = np.where(nanchange == 1)[0] +1 #gets the index of the first nan in the period
+            nanends = np.where(nanchange == -1)[0] +1  #this lets u index the last nan of the period
+            
+            nanstarts = np.subtract(nanstarts, cleanbefore) #adjusts to remove cleanms samples before the missing data
+            nanends   = np.add(nanends, cleanafter)        #adjusts to remove cleanms samples after the missing data
+            
+            if len(nanstarts) == len(nanends): #blinks within the block not at start/end as these need fixing more effortfully
+                for iblink in range(len(nanstarts)):
+                    tmpp[nanstarts[iblink]:nanends[iblink]] = np.nan
+                    
+            #plot to visualise the effect of this step
+            
+            fig = plt.figure()
+            ax = fig.add_subplot()
+            ax.plot(data[iblock]['trackertime'], data[iblock]['p'], lw = 1, color = '#9ecae1', label = 'raw')
+            ax.plot(tmpdata['trackertime'], tmpp, lw = 1, color = '#fdae6b', label = 'adjusted')
+            ax.set_title('cleanms: %s'%str(cleanms))
+                    
+        
 
 
 #def class(raweyes)

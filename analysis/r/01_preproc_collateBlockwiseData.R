@@ -5,7 +5,7 @@ setwd(dir)
 
 datapath <- paste0(dir, '/data/datafiles')
 
-sublist <- seq(3,11, by = 1)
+sublist <- seq(3,12, by = 1)
 
 #this will collate all parts of the same subjects into one file per subject
 dataFiles = list(NULL)
