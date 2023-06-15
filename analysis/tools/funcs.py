@@ -52,13 +52,25 @@ def getSubjectInfo(subject, ):
     if subject['id'] == 11:
         param['badchans'] = ['TP7']
     if subject['id'] == 12:
-        param['badchans'] = []
+        param['badchans'] = ['AF3', 'T7', 'T8', 'TP7', 'TP8']
     if subject['id'] == 13:
-        param['badchans'] = []
+        param['badchans'] = ['FT8', 'T7', 'T8']
     if subject['id'] == 14:
         param['badchans'] = []
     if subject['id'] == 15:
         param['badchans'] = []
+    if subject['id'] == 16:
+        param['badchans'] = ['T8']
+    # if subject['id'] == 17:
+    #     param['badchans'] = []
+    # if subject['id'] == 18:
+    #     param['badchans'] = []
+    # if subject['id'] == 19:
+    #     param['badchans'] = []
+    # if subject['id'] == 20:
+    #     param['badchans'] = []
+    
+        
     return param
     
 def gesd(x, alpha = .05, p_out = .1, outlier_side = 0):
