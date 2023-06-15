@@ -18,17 +18,19 @@ from matplotlib import pyplot as plt
 %matplotlib
 
 # sys.path.insert(0, '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty/analysis/tools')
-sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+# sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
 from funcs import getSubjectInfo
 
 # wd = '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty' #workstation wd
-wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+# wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
 os.chdir(wd)
 
 
-subs = np.array([10, 11])
+subs = np.array([10, 11, 12, 13, 14, 15])
 for i in subs:
-    sub   = dict(loc = 'laptop', id = i)
+    sub   = dict(loc = 'pc', id = i)
     param = getSubjectInfo(sub)
     
     raw = mne.io.read_raw_curry(fname = param['raweeg'], preload = True)
@@ -48,13 +50,21 @@ for i in subs:
         'Trigger':'misc'
         })
     
-    raw.set_eeg_reference(ref_channels = ['M1', 'M2']) #set reference to average mastoid
     raw.set_montage('easycap-M1', on_missing='raise', match_case = False)
     
-    raw.filter(0.1, 40) #filter between 0.1 and 40 Hz
-    
-    raw.info['bads'] = deepcopy(param['badchans'])
-    raw.info['bads'].extend(['AFz']) #AFz was the ground, we want to interpolate it
+    reftype = 'mastoid'
+    if reftype == 'mastoid':
+        raw.set_eeg_reference(ref_channels = ['M1', 'M2']) # set average mastoid reference
+        raw.filter(0.1, 40) #filter between 0.1 and 40 Hz
+        #this filters bad channels too, which is fine
+        raw.info['bads'] = deepcopy(param['badchans'])
+        raw.info['bads'].extend(['AFz']) #AFz was the ground, we want to interpolate it
+    elif reftype == 'average':
+        #set bad channels here so they are ignored in the average referencing
+        raw.info['bads'] = deepcopy(param['badchans'])
+        raw.info['bads'].extend(['AFz']) #AFz was the ground, we want to interpolate it
+        raw.set_eeg_reference(ref = 'average')
+        raw.filter(0.1, 40, picks = 'all') #make sure that even 'bad' channels are filtered too (no real reason not to)
     
     raw.interpolate_bads() #interpolate bad channels
     
@@ -100,6 +110,8 @@ for i in subs:
     
     raw.save(fname = param['eeg_preproc'], fmt = 'double', overwrite = True)
     plt.close('all')
-    
-    
+    del(comps)
+    del(c)
+    del(raw)
+    del(eog_epochs)
     

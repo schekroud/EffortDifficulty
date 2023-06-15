@@ -12,37 +12,53 @@ from copy import deepcopy
 import pandas as pd
 from matplotlib import pyplot as plt
 
-def getSubjectInfo(subject):
+def getSubjectInfo(subject, ):
     
     param = {}
     
     if subject['loc']   == 'workstation':
         param['path']   = '/home/sammirc/Desktop/postdoc/EffortDifficulty/data'
+        wd              = '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty'
     elif subject['loc'] == 'laptop': 
         param['path']   = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/data'
+        wd              = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
     elif subject['loc'] == 'pc':
         param['path']   = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/data'
+        wd              = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
     
     path = param['path']
+    substr = 's%02d'%subject['id']
+    eegpath = path[:-5] #remove /data  from pathstring 
     
-    param['subid']          = 's%02d'%subject['id'] 
+    param['subid']          = substr 
     param['behaviour']      = op.join(path, 'datafiles', 'EffortDifficulty_s%02d_combined.csv'%subject['id']) #behavioural data file
-    param['raweeg']         = op.join(path, 'eeg', 'EffortDifficulty_s%02d.dat'%subject['id']) # raw eeg data
-    param['eeg_preproc']    = op.join(path, 'eeg', 'EffortDifficulty_s%02d_preproc-raw.fif'%subject['id']) #preprocessed data
+    param['raweeg']         = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d.dat'%subject['id']) # raw eeg data
+    param['eeg_preproc']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_preproc-raw.fif'%subject['id']) #preprocessed data
     param['asc']            = op.join(path, 'eyes', 'asc', 'EffDS%02d.asc'%subject['id'])
     param['raweyes']        = op.join(path, 'eyes', 'raw', 'EffDS%02d_raw.pickle'%subject['id'])
     param['preproceyes']    = op.join(path, 'eyes', 'preprocessed', 'EffDS%02d_preproc.pickle'%subject['id'])
     
     #paths to save other eeg objects
-    param['stim1locked']    = op.join(path, 'eeg', 'EffortDifficulty_s%02d_stim1locked-epo.fif'%subject['id'])
-    param['stim2locked']    = op.join(path, 'eeg', 'EffortDifficulty_s%02d_stim2locked-epo.fif'%subject['id'])
-    param['fblocked']       = op.join(path, 'eeg', 'EffortDifficulty_s%02d_fblocked-epo.fif'%subject['id'])
+    param['stim1locked']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_stim1locked-epo.fif'%subject['id'])
+    param['stim2locked']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_stim2locked-epo.fif'%subject['id'])
+    param['fblocked']       = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_fblocked-epo.fif'%subject['id'])
     
+    
+    # if subject['id'] == :
+    #     param['badchans'] = []
     
     if subject['id'] == 10:
         param['badchans'] = ['AF7']
     if subject['id'] == 11:
         param['badchans'] = ['TP7']
+    if subject['id'] == 12:
+        param['badchans'] = []
+    if subject['id'] == 13:
+        param['badchans'] = []
+    if subject['id'] == 14:
+        param['badchans'] = []
+    if subject['id'] == 15:
+        param['badchans'] = []
     return param
     
 def gesd(x, alpha = .05, p_out = .1, outlier_side = 0):
