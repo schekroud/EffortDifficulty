@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jun  7 12:00:39 2023
+Created on Thu Jun 15 19:13:14 2023
 
 @author: sammi
 """
@@ -30,8 +29,6 @@ os.chdir(wd)
 
 
 subs = np.array([10, 11, 12, 13, 14, 15, 16])
-subs = np.array([    11, 12, 13, 14, 15, 16])
-
 for i in subs:
     for run in [2]: #[1, 2]
         for baselined in [False]:
@@ -41,11 +38,11 @@ for i in subs:
             
             if run == 1:
                 #run on all trials epoched data
-                in_fname  = param['stim1locked']
+                in_fname  = param['stim2locked']
                 out_fname = in_fname.replace('-epo.fif', '-tfr.h5')
             elif run == 2:
                 #run on cleaned epoched data
-                in_fname  = param['stim1locked'].replace('stim1locked', 'stim1locked_cleaned')
+                in_fname  = param['stim2locked'].replace('stim2locked', 'stim2locked_cleaned')
                 out_fname = in_fname.replace('-epo.fif', '-tfr.h5')
                 
             if baselined:
@@ -68,7 +65,7 @@ for i in subs:
             #                      use_fft=True, return_itc=False, average=False)
             tfr = mne.time_frequency.tfr_multitaper(epoched, freqs=freqs, n_cycles=n_cycles,
                                                     use_fft=True, return_itc=False, average=False, n_jobs = 2)
-            tfr.metadata.to_csv(param['behaviour'].replace('combined.csv', 'combined_stim1lockedtfr.csv'), index=False)
+            tfr.metadata.to_csv(param['behaviour'].replace('combined.csv', 'combined_stim2lockedtfr.csv'), index=False)
             print('\nSaving TFR data')
             tfr.save(fname = out_fname, overwrite = True)
             

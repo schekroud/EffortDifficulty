@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jun  7 09:41:03 2023
+Created on Wed Jun  7 11:31:59 2023
 
 @author: sammi
 """
@@ -20,7 +20,6 @@ from matplotlib import pyplot as plt
 # sys.path.insert(0, '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty/analysis/tools')
 # sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
 sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
-
 from funcs import getSubjectInfo, gesd, plot_AR
 
 # wd = '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty' #workstation wd
@@ -30,15 +29,13 @@ wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficul
 os.chdir(wd)
 
 subs = np.array([10, 11, 12, 13, 14, 15, 16])
-subs = np.array([10, 11, 12, 13, 14, 15, 16])
 
 for i in subs:
-    print('\nworking on subject ' + str(i) +'\n')
+    print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
     sub   = dict(loc = 'pc', id = i)
     param = getSubjectInfo(sub)
     
     raw = mne.io.read_raw_fif(fname = param['eeg_preproc'], preload = False)
-    # tmp = mne.io.read_raw_curry(fname = param['raweeg'], preload = False)
     raw.set_montage('easycap-M1', on_missing='raise', match_case=False) #just make sure montage is applied
     
     events_s1       = [1, 10] #stim1 triggers
@@ -49,11 +46,9 @@ for i in subs:
     events_iti      = [150]
     events_plr      = [200]
     
-    #epoching to stim1 onset
-    
-    tmin, tmax = -1, 3
+    #epoching to fb onset
+    tmin, tmax = -1, 2
     baseline = None #don't baseline just yet
-    
     
     #get events from annotations
     event_id = { '1':   1, '10': 10,        #stim1
@@ -71,18 +66,15 @@ for i in subs:
                   '61':  61, #incorrect feedback
                   '62':  62, #timed out feedback,
                  '150': 150, #ITI trigger
+                 '200': 200 #PLR trigger
                  }
     events, _ = mne.events_from_annotations(raw, event_id)
-    
-    if i == 12:
-        #one trigger is labelled wrong 
-        wrongid = np.where(events[:,0] ==1325388)[0] #it received a 10 when 11 was sent
-        events[wrongid,2] = 11 #re-label this trigger
-        
-    epoched = mne.Epochs(raw, events, events_s1, tmin, tmax, baseline, reject_by_annotation=False, preload=False)
+    epoched = mne.Epochs(raw, events, events_feedback, tmin, tmax, baseline,
+                         reject_by_annotation=False, preload=False, on_missing='ignore') #it doesn't like to continue if it doesn't find a trigger
+    #set on_missing to ignore just so that it continues, but can still check number of triggers is correct
     bdata = pd.read_csv(param['behaviour'], index_col = None)
     epoched.metadata = bdata
-    epoched.save(fname = param['stim1locked'], overwrite = True)
+    epoched.save(fname = param['fblocked'], overwrite = True)
     
     #remove from RAM
     del(epoched)

@@ -18,18 +18,21 @@ from matplotlib import pyplot as plt
 %matplotlib
 
 # sys.path.insert(0, '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty/analysis/tools')
-sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+# sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
 from funcs import getSubjectInfo, gesd, plot_AR
 
 # wd = '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty' #workstation wd
 wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
+
 os.chdir(wd)
 
-subs = np.array([10, 11])
+subs = np.array([10, 11, 12, 13, 14, 15, 16])
 
 for i in subs:
     print('\nworking on subject ' + str(i) +'\n')
-    sub   = dict(loc = 'laptop', id = i)
+    sub   = dict(loc = 'pc', id = i)
     param = getSubjectInfo(sub)
     
     raw = mne.io.read_raw_fif(fname = param['eeg_preproc'], preload = False)
@@ -68,6 +71,12 @@ for i in subs:
                  '200': 200 #PLR trigger
                  }
     events, _ = mne.events_from_annotations(raw, event_id)
+    
+    if i == 12:
+        #one trigger is labelled wrong 
+        wrongid = np.where(events[:,0] ==1325388)[0] #it received a 10 when 11 was sent
+        events[wrongid,2] = 11 #re-label this trigger
+        
     epoched = mne.Epochs(raw, events, events_s2, tmin, tmax, baseline, reject_by_annotation=False, preload=False)
     bdata = pd.read_csv(param['behaviour'], index_col = None)
     epoched.metadata = bdata
