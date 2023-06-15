@@ -1,11 +1,12 @@
 library(tidyverse)
 library(magrittr)
-dir <- '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+#dir <- '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+dir <- 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/Effortdifficulty'
 setwd(dir)
 
 datapath <- paste0(dir, '/data/datafiles')
 
-sublist <- seq(3,12, by = 1)
+sublist <- seq(3,16, by = 1)
 
 #this will collate all parts of the same subjects into one file per subject
 dataFiles = list(NULL)
