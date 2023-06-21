@@ -17,8 +17,8 @@ def getSubjectInfo(subject, ):
     param = {}
     
     if subject['loc']   == 'workstation':
-        param['path']   = '/home/sammirc/Desktop/postdoc/EffortDifficulty/data'
-        wd              = '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty'
+        param['path']   = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/data'
+        wd              = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty'
     elif subject['loc'] == 'laptop': 
         param['path']   = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/data'
         wd              = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
@@ -34,7 +34,7 @@ def getSubjectInfo(subject, ):
     param['behaviour']      = op.join(path, 'datafiles', 'EffortDifficulty_s%02d_combined.csv'%subject['id']) #behavioural data file
     param['raweeg']         = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d.dat'%subject['id']) # raw eeg data
     param['eeg_preproc']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_preproc-raw.fif'%subject['id']) #preprocessed data
-    param['asc']            = op.join(path, 'eyes', 'asc', 'EffDS%02d.asc'%subject['id'])
+    param['asc']            = op.join(path, 'eyes', 'asc', 'EffDS%02da.asc'%subject['id'])
     param['raweyes']        = op.join(path, 'eyes', 'raw', 'EffDS%02d_raw.pickle'%subject['id'])
     param['preproceyes']    = op.join(path, 'eyes', 'preprocessed', 'EffDS%02d_preproc.pickle'%subject['id'])
     
@@ -60,7 +60,7 @@ def getSubjectInfo(subject, ):
     if subject['id'] == 15:
         param['badchans'] = []
     if subject['id'] == 16:
-        param['badchans'] = ['T8']
+        param['badchans'] = ['T8', 'TP7']
     # if subject['id'] == 17:
     #     param['badchans'] = []
     # if subject['id'] == 18:
