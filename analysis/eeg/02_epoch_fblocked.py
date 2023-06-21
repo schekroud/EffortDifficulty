@@ -17,14 +17,14 @@ import sys
 from matplotlib import pyplot as plt
 %matplotlib
 
-# sys.path.insert(0, '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty/analysis/tools')
 # sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
+# sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
+sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
 from funcs import getSubjectInfo, gesd, plot_AR
 
-# wd = '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty' #workstation wd
-wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
-wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
+# wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+# wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
+wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 
 os.chdir(wd)
 
@@ -32,7 +32,7 @@ subs = np.array([10, 11, 12, 13, 14, 15, 16])
 
 for i in subs:
     print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
-    sub   = dict(loc = 'pc', id = i)
+    sub   = dict(loc = 'workstation', id = i)
     param = getSubjectInfo(sub)
     
     raw = mne.io.read_raw_fif(fname = param['eeg_preproc'], preload = False)

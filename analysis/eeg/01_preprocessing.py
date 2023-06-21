@@ -16,27 +16,28 @@ import os.path as op
 import sys
 from matplotlib import pyplot as plt
 %matplotlib
+mne.viz.set_browser_backend('qt')
 
-# sys.path.insert(0, '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty/analysis/tools')
 # sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
+# sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
+sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
 from funcs import getSubjectInfo
 
-# wd = '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty' #workstation wd
 # wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
-wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
+# wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
+wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 os.chdir(wd)
 
 
 subs = np.array([10, 11, 12, 13, 14, 15, 16])
 for i in subs:
-    sub   = dict(loc = 'pc', id = i)
+    sub   = dict(loc = 'workstation', id = i)
     param = getSubjectInfo(sub)
     
     raw = mne.io.read_raw_curry(fname = param['raweeg'], preload = True)
     
-    raw = mne.add_reference_channels(raw, ref_channels = 'M1', copy = False) #left mastoid was active reference, add it back in (empty channel)
-    raw.rename_channels({'RM':'M2'})
+    raw = mne.add_reference_channels(raw, ref_channels = 'M2', copy = False) #left mastoid was active reference, add it back in (empty channel)
+    raw.rename_channels({'RM':'M1'})
     
     #create bipolar eog channel from EOGL (lower eye electrode) and referencing it to FP1 (above left eye)
     raw = mne.set_bipolar_reference(raw, drop_refs = False, #keep these channels in the data so we keep FP1
@@ -54,14 +55,14 @@ for i in subs:
     
     reftype = 'average'
     if reftype == 'mastoid':
-        raw.filter(1, 40, n_jobs=2) #filter between 0.1 and 40 Hz
+        raw.filter(1, 40, n_jobs=3) #filter between 0.1 and 40 Hz
         raw.set_eeg_reference(ref_channels = ['M1', 'M2']) # set average mastoid reference
         #this filters bad channels too, which is fine
         raw.info['bads'] = deepcopy(param['badchans'])
         raw.info['bads'].extend(['AFz']) #AFz was the ground, we want to interpolate it
     elif reftype == 'average':
         #set bad channels here so they are ignored in the average referencing
-        raw.filter(1, 40, picks = 'all', n_jobs=2) #make sure that even 'bad' channels are filtered too (no real reason not to)
+        raw.filter(1, 40, picks = 'all', n_jobs=3) #make sure that even 'bad' channels are filtered too (no real reason not to)
         #first re-ref to average mastoid to reduce asymmetry in the reference
         raw.set_eeg_reference(ref_channels = ['M1', 'M2'])
         
@@ -76,19 +77,23 @@ for i in subs:
     # (extended break periods have high noise and influence the ICA)
     #then you can browse the raw data and mark it to be ignored
     #this is useful for s14
-    # raw.plot(duration = 60, n_channels = 63) #browse in units of 1min
+    raw.plot(duration = 60, n_channels = 63) #browse in units of 1min
+    # raw.interpolate_bads() #if you need to interpolate any channels you see are bad during the data review
     
     #run ica
-    ica = mne.preprocessing.ICA(n_components = .99, method = 'fastica').fit(raw,
-          reject = dict(eeg=400e-6)) #this will exclude noisy segments of data from the ICA that can cause it to fail to be useful
+    ica = mne.preprocessing.ICA(n_components = 30, #cap at 30 components to be useful
+                                method = 'infomax').fit(raw,
+          reject_by_annotation = True) #this will exclude break periods if marked as bad using the code above
+          # reject = dict(eeg = 400e-6))
     # ideally this just excludes periods between blocks where ppts took breaks as they move a lot then
     
-    eog_epochs = mne.preprocessing.create_eog_epochs(raw)
+    
+    eog_epochs = mne.preprocessing.create_eog_epochs(raw, ch_name = ['HEOG', 'VEOG'])
     eog_inds, eog_scores = ica.find_bads_eog(eog_epochs)
     ica.plot_scores(eog_scores, eog_inds)
     
-    ica.plot_components(inst=raw)
-    print('subject %d, %d components to remove:'%(i, len(eog_inds)))
+    ica.plot_components(inst=raw, contours = 0)
+    print('\n\n- - - - - - - subject %d, %d components to remove: - - - - - - -\n\n'%(i, len(eog_inds)))
     
     comps = ica.get_sources(inst=raw)
     c = comps.get_data()
@@ -112,7 +117,7 @@ for i in subs:
    
     plt.pause(3)
     
-    comps2rem = input('components to remove: ') #need to separate component numbers by comma and space
+    comps2rem = input('components  remove: ') #need to separate component numbers by comma and space
     comps2rem = list(map(int, comps2rem.split(', ')))
     np.savetxt(fname = op.join(param['path'], 'removed_comps', 's%02d_removedcomps.txt'%i),
                X = comps2rem, fmt = '%i') #record what components were removed
