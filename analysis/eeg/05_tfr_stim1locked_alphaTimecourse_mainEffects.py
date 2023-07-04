@@ -16,21 +16,22 @@ import sys
 from matplotlib import pyplot as plt
 from scipy import stats
 import seaborn as sns
+import glmtools as glm
 %matplotlib
+mne.viz.set_browser_backend('qt')
 
-# sys.path.insert(0, '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty/analysis/tools')
-sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+
+# sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
 # sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
+sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+
 from funcs import getSubjectInfo
 
-# wd = '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty' #workstation wd
-wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+# wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
 # wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
+wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
+
 os.chdir(wd)
-
-# sys.path.insert(0, '/home/sammirc/Desktop/DPhil/glm')
-import glmtools as glm
-
 
 subs = np.array([10, 11, 12, 13, 14, 15, 16])
 
@@ -40,37 +41,47 @@ def gauss_smooth(array, sigma = 2):
 
 #%%
 
-gmean     = np.empty(shape = [subs.size, 400])
-correct   = np.empty(shape = [subs.size, 400])
-incorrect = np.empty(shape = [subs.size, 400])
+transform   = False #make into 10log10 power (dB)
+baseline    = True
 
-d2   = np.empty(shape = [subs.size, 400])
-d4   = np.empty(shape = [subs.size, 400])
-d8   = np.empty(shape = [subs.size, 400])
-d12  = np.empty(shape = [subs.size, 400])
+gmean     = np.empty(shape = [subs.size, 600])
+correct   = np.empty(shape = [subs.size, 600])
+incorrect = np.empty(shape = [subs.size, 600])
+
+d2   = np.empty(shape = [subs.size, 600])
+d4   = np.empty(shape = [subs.size, 600])
+d8   = np.empty(shape = [subs.size, 600])
+d12  = np.empty(shape = [subs.size, 600])
 
 count = -1 #loop over subjects
 for i in subs:
     count +=1 #add 1 to be able t add data
-    print('\nworking on subject ' + str(i) +'\n')
-    sub   = dict(loc = 'laptop', id = i)
+    print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
+    sub   = dict(loc = 'workstation', id = i)
     param = getSubjectInfo(sub)
+    
     tfr = mne.time_frequency.read_tfrs(param['stim1locked'].replace('stim1locked', 'stim1locked_cleaned_Alpha').replace('-epo.fif', '-tfr.h5')); tfr = tfr[0]
     # tfr = mne.time_frequency.read_tfrs(param['stim2locked'].replace('stim2locked', 'stim2locked_cleaned_Alpha').replace('-epo.fif', '-tfr.h5')); tfr = tfr[0]
     
     #comes with metadata attached            
     tfr = tfr['fbtrig != 62'] #drop timeout trials
     #reduce down to single timecourse of alpha in posterior channels
-    posteriorchannels = ['PO7', 'PO3', 'O1', 'PO8', 'PO4', 'O2',  'Oz', 'POz']
+    posterior_channels = ['PO7', 'PO3', 'O1', 'O2', 'PO4', 'PO8']
     
     #set baseline params to test stuff
-    tmin, tmax = None, None
-    tmin, tmax = -0.8, -0.5 #baseline period for stim1locked
-    
-    tfrdat = tfr.copy().apply_baseline(baseline = (tmin, tmax)).pick_channels(posteriorchannels).data.copy()
+    if baseline:
+        bline = (None, None)
+        bline = (-2.7, -2.4) #baseline period for stim1locked
+    elif not baseline:
+        bline = None
+        
+    tfrdat = tfr.copy().apply_baseline(baseline = bline).pick_channels(posterior_channels).data.copy()
     tfrdat = np.mean(tfrdat, axis = 2) #average across the frequency band, results in trials x channels x time
     tfrdat = np.mean(tfrdat, axis = 1) #average across channels now, returns trials x time
     tfrdat = gauss_smooth(tfrdat, sigma = 2)
+    
+    if transform:
+        tfrdat = np.multiply(10, np.log10(tfrdat))
     
     times = tfr.times
     # fig = plt.figure()

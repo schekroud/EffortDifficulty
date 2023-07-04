@@ -17,21 +17,25 @@ import sys
 from matplotlib import pyplot as plt
 %matplotlib
 
-# sys.path.insert(0, '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty/analysis/tools')
-sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+# sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+# sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
+sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+
 from funcs import getSubjectInfo, gesd, plot_AR
 
-# wd = '/ohba/pi/knobre/schekroud/postdoc/student_projects/EffortDifficulty' #workstation wd
-wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+# wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+# wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
+wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
+
 os.chdir(wd)
 
-subs = np.array([10, 11])
+subs = np.array([10, 11, 12, 13, 14, 15, 16])
 
 correct = []
 incorrect = []
 for i in subs:
     print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
-    sub   = dict(loc = 'laptop', id = i)
+    sub   = dict(loc = 'workstation', id = i)
     param = getSubjectInfo(sub)
     
     epochs = mne.read_epochs(fname = param['stim2locked'].replace('stim2locked', 'stim2locked_cleaned'), preload = True)
@@ -45,13 +49,13 @@ for i in subs:
     incorrect.append(iIncorrect.average())
 
 #%%
-
+topoargs = dict(contours=0)
 #get grand averages
 
 gave_corr = mne.grand_average(correct)
 gave_incorr = mne.grand_average(incorrect)
 gave_diff = mne.combine_evoked([gave_corr, gave_incorr], weights = [1, -1])
 
-gave_diff.plot_joint(times = np.arange(0, 0.6, 0.1), title = 'difference')
-gave_corr.plot_joint(times = np.arange(0, 0.6, 0.1), title = 'correct')
-gave_incorr.plot_joint(times = np.arange(0, 0.6, 0.1), title = 'incorrect')
+gave_diff.plot_joint(times = np.arange(0, 0.6, 0.1), topomap_args = topoargs, title = 'diff')
+gave_corr.plot_joint(times = np.arange(0, 0.6, 0.1), topomap_args = topoargs, title = 'correct')
+gave_incorr.plot_joint(times = np.arange(0, 0.6, 0.1), topomap_args = topoargs, title = 'incorrect')

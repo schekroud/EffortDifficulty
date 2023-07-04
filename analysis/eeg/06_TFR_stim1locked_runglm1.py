@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jun 21 12:26:01 2023
+
+@author: sammirc
+"""
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -40,7 +47,7 @@ for i in subs:
         print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
         sub   = dict(loc = 'workstation', id = i)
         param = getSubjectInfo(sub)
-        tfr = mne.time_frequency.read_tfrs(param['stim1locked'].replace('stim1locked', 'stim1locked_cleaned_Alpha').replace('-epo.fif', '-tfr.h5')); tfr = tfr[0]
+        tfr = mne.time_frequency.read_tfrs(param['stim1locked'].replace('stim1locked', 'stim1locked_cleaned').replace('-epo.fif', '-tfr.h5')); tfr = tfr[0]
         
         #comes with metadata attached            
         tfr = tfr['fbtrig != 62'] #drop timeout trials
@@ -67,21 +74,22 @@ for i in subs:
         correct     = tfr.metadata.rewarded.to_numpy()
         incorrect   = tfr.metadata.unrewarded.to_numpy()
         correctness = np.where(correctness == 0, -1, correctness)
+        difficultyOri = tfr.metadata.difficultyOri.to_numpy()
+        difficulty = np.subtract(difficultyOri, difficultyOri.mean()) #demean, so this is relative to the average difficulty across the task
         
         
         regressors = list()
-
         #add regressors to the model
-        regressors.append(glm.regressors.CategoricalRegressor(category_list = correct, codes = 1, name = 'correct'))
-        regressors.append(glm.regressors.CategoricalRegressor(category_list = incorrect, codes  = 1, name = 'incorrect'))
-        # regressors.append(glm.regressors.ParametricRegressor(name = 'correctness', values = correctness, preproc = None, num_observations = nobs)) #contrast regressor
-        
+        regressors.append(glm.regressors.ParametricRegressor(name = 'grandmean', values = trials, preproc= None, num_observations=nobs))
+        regressors.append(glm.regressors.ParametricRegressor(name = 'correctness', values = correctness, preproc = None, num_observations = nobs)) #contrast regressor
+        regressors.append(glm.regressors.ParametricRegressor(name = 'difficulty', values = difficulty, preproc = None, num_observations = nobs))
         
         contrasts = list()
-        contrasts.append(glm.design.Contrast([1, 0], 'correct'))      #0
-        contrasts.append(glm.design.Contrast([0, 1], 'incorrect'))    #1
-        contrasts.append(glm.design.Contrast([1,-1], 'corrvsincorr'))        #2
-        contrasts.append(glm.design.Contrast([1, 1], 'grandmean'))      #3
+        contrasts.append(glm.design.Contrast([1, 0, 0], 'grandmean'))
+        contrasts.append(glm.design.Contrast([0, 1, 0], 'corrvsincorr'))
+        contrasts.append(glm.design.Contrast([0, 0, 1], 'difficulty'))
+        contrasts.append(glm.design.Contrast([1, 1, 0], 'correct'))
+        contrasts.append(glm.design.Contrast([1,-1, 0], 'incorrect'))
         
         glmdes = glm.design.GLMDesign.initialise(regressors, contrasts)
         #glmdes.plot_summary()
@@ -103,7 +111,7 @@ for i in subs:
 
         # loop over betas first and save them
         for iname in range(len(model.regressor_names)): #loop over regressors
-            if model.regressor_names[iname] in ['grandmean', 'correctness']:
+            if model.regressor_names[iname] in ['grandmean', 'correctness', 'difficulty']:
                 nave = len(trials)
             elif model.regressor_names[iname] == 'correct':
                 nave = correct.sum()
@@ -115,16 +123,16 @@ for i in subs:
             tfr_beta = mne.time_frequency.AverageTFR(info = info, times = times, freqs = freqs, nave = nave,
                                                      data = model.betas[iname])
             tfr_beta.save(fname = op.join(wd, 'glms', 'stim1locked', 'glm1', 
-                                          param['subid'] + '_stim1locked_tfr_AlphaOnly_' + ibeta_name + '_beta-tfr.h5'), overwrite = True)
+                                          param['subid'] + '_stim1locked_tfr_' + ibeta_name + addtopath + '_beta-tfr.h5'), overwrite = True)
             del(tfr_beta)
 
         #loop over contrasts + tstats now
         for iname in range(len(model.contrast_names)):
             name = model.contrast_names[iname].replace(' ','') #remove whitespace in the contrast name
 
-            if iname in [0]:
+            if iname in [3]:
                 nave = correct.sum()
-            elif iname in [1]:
+            elif iname in [4]:
                 nave = incorrect.sum()
             else:
                 nave = len(trials)
@@ -139,13 +147,13 @@ for i in subs:
                                                       data = model.copes[iname])
             
             tfr_cope.save(fname = op.join(wd, 'glms', 'stim1locked', 'glm1', 
-                                          param['subid'] + '_stim1locked_tfr_AlphaOnly_' + name + '_cope-tfr.h5'), overwrite = True)
+                                          param['subid'] + '_stim1locked_tfr_' + name + addtopath + '_cope-tfr.h5'), overwrite = True)
             del(tfr_cope)
 
             tfr_tstat = mne.time_frequency.AverageTFR(info = info, times = times, freqs = freqs, nave = nave,
                                                       data = model.get_tstats()[iname])
             tfr_tstat.save(fname = op.join(wd, 'glms', 'stim1locked', 'glm1', 
-                                          param['subid'] + '_stim1locked_tfr_AlphaOnly_' + name + '_tstat-tfr.h5'), overwrite = True)
+                                          param['subid'] + '_stim1locked_tfr_' + name + addtopath + '_tstat-tfr.h5'), overwrite = True)
             del(tfr_tstat)
         #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
         del(glmdes)
