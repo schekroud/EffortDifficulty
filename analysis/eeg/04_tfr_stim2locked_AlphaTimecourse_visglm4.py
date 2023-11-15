@@ -142,5 +142,25 @@ for diff in range(len(difficulties)):
     ax.set_ylabel('Beta (AU)')
     ax.legend()
 fig.tight_layout()
-fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_betas'+'.eps'), dpi = 300, format = 'eps')
-fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_betas'+'.pdf'), dpi = 300, format = 'pdf')
+fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_copes'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_copes'+'.pdf'), dpi = 300, format = 'pdf')
+#%%
+
+diffcols =['#d7191c', '#fdae61', '#a6d96a', '#1a9641'] 
+difflabels = ['difficulty 2', 'difficulty 4', 'difficulty 8', 'difficulty 12']
+fig = plt.figure()
+ax = fig.add_subplot(111)
+for idiff in range(len(difficulties)):
+    ax.plot(times, betas_mean[idiff, 0], c = diffcols[idiff], label = difflabels[idiff])
+    ax.fill_between(times,
+                    y1 = np.add(betas_mean[idiff,0], betas_sem[idiff, 0]),
+                    y2 = np.subtract(betas_mean[idiff,0], betas_sem[idiff, 0]),
+                    color = diffcols[idiff], alpha = 0.3, lw = 0)
+ax.set_xlim([-2.7, 1.7])
+ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
+ax.axvline(x=0, ls = 'dashed', color = '#000000', lw = 1)
+ax.set_xlabel('time relative to stim 2 onset (s)')
+ax.set_ylabel('Beta (AU)')
+ax.legend()
+fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_betas_difficulty'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_betas_difficulty'+'.pdf'), dpi = 300, format = 'pdf')
