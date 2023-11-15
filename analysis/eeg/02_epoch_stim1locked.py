@@ -23,14 +23,29 @@ sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDiff
 
 from funcs import getSubjectInfo, gesd, plot_AR
 
+def streaks_numbers(array):
+    '''
+    finds streaks of an array where a number is the same
+    - useful for finding sequences of trials where difficulty is the same
+    note: bit slow because it literally loops over an array so it isn't the fastest, but it works
+    '''
+    x = np.zeros(array.size).astype(int)
+    count = 0
+    for ind in range(len(x)):
+        if array[ind] == array[ind-1]:
+            count += 1 #continuing the sequence
+        else: #changed difficulty
+            count = 1
+        x[ind] = count
+    return x
+
 # wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
 # wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
 wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 
 os.chdir(wd)
 
-subs = np.array([10, 11, 12, 13, 14, 15, 16])
-subs = np.array([10, 11, 12, 13, 14, 15, 16])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
 
 for i in subs:
     print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
@@ -51,7 +66,7 @@ for i in subs:
     
     #epoching to stim1 onset
     
-    tmin, tmax = -3, 3
+    tmin, tmax = -3, 4
     baseline = None #don't baseline just yet
     
     
@@ -81,7 +96,18 @@ for i in subs:
         
     epoched = mne.Epochs(raw, events, events_s1, tmin, tmax, baseline, reject_by_annotation=False, preload=False)
     bdata = pd.read_csv(param['behaviour'], index_col = None)
-    epoched.metadata = bdata
+    
+    bdat = pd.DataFrame()
+    for iblock in bdata.blocknumber.unique():
+        #this needs to be run separately for each block 
+        tmpdata = bdata.query('blocknumber == @iblock')
+        #add in where this trial is within a perceptual difficulty sequence
+        tmpdata = tmpdata.assign(diffseqpos = streaks_numbers(tmpdata.difficultyOri.to_numpy()))
+        #reconstruct the behavioural data file
+        bdat = pd.concat([bdat, tmpdata])
+        # bdata = bdata.assign(diffseqpos = streaks_numbers(bdata.difficultyOri.to_numpy()))
+    
+    epoched.metadata = bdat
     epoched.save(fname = param['stim1locked'], overwrite = True)
     
     #remove from RAM

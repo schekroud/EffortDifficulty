@@ -33,7 +33,7 @@ wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #works
 
 os.chdir(wd)
 
-subs = np.array([10, 11, 12, 13, 14, 15, 16])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
 
 def gauss_smooth(array, sigma = 2):
     return sp.ndimage.gaussian_filter1d(array, sigma=sigma, axis = 1) #smooths across time, given 2d array of trials x time
@@ -47,6 +47,7 @@ baseline    = True
 gmean     = np.empty(shape = [subs.size, 600])
 correct   = np.empty(shape = [subs.size, 600])
 incorrect = np.empty(shape = [subs.size, 600])
+diff      = np.empty(shape = [subs.size, 600])
 
 d2   = np.empty(shape = [subs.size, 600])
 d4   = np.empty(shape = [subs.size, 600])
@@ -109,6 +110,7 @@ for i in subs:
     gmean[count]        = tfrdat.copy().mean(axis=0)
     correct[count]      = corrdat.mean(axis=0)
     incorrect[count]    = incorrdat.mean(axis=0)
+    diff[count]         = np.subtract(corrdat.mean(0), incorrdat.mean(0))
     
     d2[count]   = diff2dat.mean(axis=0)
     d4[count]   = diff4dat.mean(axis=0)
@@ -131,9 +133,10 @@ fig.legend()
 #plot by subsequent correctness
 
 fig = plt.figure()
-ax = fig.add_subplot(111)
-ax.axvspan(xmin=-0.0001, xmax = 0, color = '#000000', alpha = 0.9)
-
+ax = fig.add_subplot(211)
+# ax.axvspan(xmin=-0.0001, xmax = 0, color = '#000000', alpha = 0.9)
+ax.axvline(x=0, color='#000000', ls='dashed')
+ax.axhline(y=0, color='#000000', ls='dashed')
 ax.plot(times, correct.mean(axis=0), label = 'correct', color = '#31a354')
 ax.fill_between(times,
                 y1 = np.subtract(correct.mean(axis=0), sp.stats.sem(correct, axis =0, ddof = 0)),
@@ -142,29 +145,38 @@ ax.plot(times, incorrect.mean(axis=0), label = 'incorrect', color = '#f03b20')
 ax.fill_between(times,
                 y1 = np.subtract(incorrect.mean(axis=0), sp.stats.sem(incorrect, axis =0, ddof = 0)),
                 y2 = np.add(incorrect.mean(axis=0), sp.stats.sem(incorrect, axis =0, ddof = 0)), color = '#f03b20', alpha = 0.3)
+ax = fig.add_subplot(212)
+ax.plot(times, diff.mean(axis=0), label = 'difference', color = '#756bb1')
+ax.fill_between(times,
+               y1 = np.subtract(diff.mean(axis=0), sp.stats.sem(diff, axis =0, ddof = 0)),
+               y2 = np.add(diff.mean(axis=0), sp.stats.sem(diff, axis =0, ddof = 0)), color = '#756bb1', alpha = 0.3)
+ax.axhline(y = 0, ls = 'dashed', color = '#000000')
+ax.axvline(x=0, ls = 'dashed', color = '#000000')
 fig.legend()
 
-
+#%%
 #plot by difficulty
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
 ax.axvspan(xmin=-0.0001, xmax = 0, color = '#000000', alpha = 0.9)
 ax.plot(times, d2.mean(axis=0), label = 'difficulty 2', color = '#d7191c')
-ax.fill_between(times,
+ax.fill_between(times,facecolor = 'none', lw = 0,
                 y1 = np.subtract(d2.mean(axis=0), sp.stats.sem(d2, axis =0, ddof = 0)),
                 y2 = np.add(d2.mean(axis=0), sp.stats.sem(d2, axis =0, ddof = 0)), color = '#d7191c', alpha = 0.3)
 ax.plot(times, d4.mean(axis=0), label = 'difficulty 4', color = '#fdae61')
-ax.fill_between(times,
+ax.fill_between(times,facecolor = 'none', lw = 0,
                 y1 = np.subtract(d4.mean(axis=0), sp.stats.sem(d4, axis =0, ddof = 0)),
                 y2 = np.add(d4.mean(axis=0), sp.stats.sem(d4, axis =0, ddof = 0)), color = '#fdae61', alpha = 0.3)
 ax.plot(times, d8.mean(axis=0), label = 'difficulty 8', color = '#a6d96a')
-ax.fill_between(times,
+ax.fill_between(times,facecolor = 'none', lw = 0,
                 y1 = np.subtract(d8.mean(axis=0), sp.stats.sem(d8, axis =0, ddof = 0)),
                 y2 = np.add(d8.mean(axis=0), sp.stats.sem(d8, axis =0, ddof = 0)), color = '#a6d96a', alpha = 0.3)
 ax.plot(times, d12.mean(axis=0), label = 'difficulty 12', color = '#1a9641')
-ax.fill_between(times,
+ax.fill_between(times, facecolor = 'none', lw = 0,
                 y1 = np.subtract(d12.mean(axis=0), sp.stats.sem(d12, axis =0, ddof = 0)),
                 y2 = np.add(d12.mean(axis=0), sp.stats.sem(d12, axis =0, ddof = 0)), color = '#1a9641', alpha = 0.3)
+ax.set_xlabel('time relative to stim1 onset (s)')
+ax.set_ylabel('alpha power ($V^2/Hz$)')
 fig.legend()
 

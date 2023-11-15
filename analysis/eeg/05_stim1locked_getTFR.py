@@ -27,10 +27,10 @@ wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #works
 
 os.chdir(wd)
 
-subs = np.array([10, 11, 12, 13, 14, 15, 16])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
 
 for i in subs:
-    for run in [2]: #[1, 2]
+    for run in [1,2]: #[1, 2]
         for baselined in [False]:
             print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
             sub   = dict(loc = 'workstation', id = i)
@@ -56,7 +56,7 @@ for i in subs:
             epoched.resample(100) #downsample to 100Hz so don't overwork the workstation
              
             # set up params for TF decomp
-            freqs = np.arange(1, 41, 1)  # frequencies from 2-35Hz
+            freqs = np.arange(1, 41, 1)  # frequencies from 1-40Hz
             n_cycles = freqs *.3  # 300ms timewindow for estimation
         
             print('\n- - - running TF decomposition - - -\n')
@@ -71,7 +71,7 @@ for i in subs:
             
             print('saving only alpha frequency data')
             tfr.crop(fmin = 8, fmax = 12)
-            tfr.save(fname = out_fname.replace('-tfr.h5', '_Alpha-tfr.h5'))
+            tfr.save(fname = out_fname.replace('-tfr.h5', '_Alpha-tfr.h5'), overwrite = True)
         
             del(epoched)
             del(tfr)

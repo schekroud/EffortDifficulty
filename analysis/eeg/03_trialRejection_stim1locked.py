@@ -10,6 +10,7 @@ import numpy as np
 import scipy as sp
 import pandas as pd
 import mne
+import sklearn as skl
 from copy import deepcopy
 import os
 import os.path as op
@@ -29,8 +30,8 @@ wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #works
 
 os.chdir(wd)
 
-subs = np.array([10, 11, 12, 13, 14, 15, 16])
-subs = np.array([10, 11, 12, 13, 14, 15, 16])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
+# subs = np.array([                            17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
 
 for i in subs:
     print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
@@ -39,6 +40,7 @@ for i in subs:
     
     #read in the already ica cleaned + epoched data
     epoched = mne.read_epochs(fname = param['stim1locked'], preload = True)
+    times = epoched.times
 
     #do trial rejection from the two files separately before concatenating events
     _, keeps = plot_AR(deepcopy(epoched).pick_types(eeg=True),
