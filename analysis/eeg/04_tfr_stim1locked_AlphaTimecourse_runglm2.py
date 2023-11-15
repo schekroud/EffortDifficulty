@@ -60,6 +60,16 @@ for i in subs:
         
         #comes with metadata attached            
         tfr = tfr['fbtrig != 62'] #drop timeout trials
+        
+        if i==21:
+            #this ppt was sleepy in block 1, which massively drags down the average performance across other blocks (where performance was ok)
+            #drop this block
+            tfr = tfr['blocknumber > 1']
+        
+        if i == 25:
+            #problem with the keyboard in block 1, drags down average performance across other blocks for one of the conditions
+            tfr = tfr['blocknumber > 1']
+        
     
         if iglm == 0:
             addtopath = ''

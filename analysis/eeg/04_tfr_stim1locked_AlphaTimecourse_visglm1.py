@@ -46,7 +46,7 @@ nsubs = subs.size
 # doesnt matter if you smooth per trial, or smooth the average. 
 # for regression, better to smooth trialwise
 # good to lightly smooth (1sd gaussian smoothing is not too much) for statistical power
-smoothing = False
+smoothing = True
 def gauss_smooth(array, sigma = 2):
     return sp.ndimage.gaussian_filter1d(array, sigma=sigma, axis = 1) #smooths across time, given 2d array of trials x time
 
@@ -73,23 +73,23 @@ for i in subs:
     copes[count] = icopes
     tstats[count] = itstats
 
-#%%
 if smoothing:
     #smooth the single subject beta/cope timecourses, rather than single trial timecourses
     for i in range(nsubs):
-        for ibeta in range(len(regnames)):
-            betas[i, ibeta] = gauss_smooth(betas[i, ibeta].copy())
+        # for ibeta in range(len(regnames)):
+        betas[i] = gauss_smooth(betas[i].copy())
         
-        for icope in range(len(contrasts)):
-            copes[i, icope] = gauss_smooth(copes[i, icope].copy())
+        # for icope in range(len(contrasts)):
+        copes[i] = gauss_smooth(copes[i].copy())
+#%%
             
 betas_mean = betas.copy().mean(axis=0)
 betas_sem = sp.stats.sem(betas, axis = 0, ddof=0)
-betas_cols = ['#2ca25f', '#e34a33', '#756bb1'] #correct, incorrect, trialnumber
+betas_cols = ['#000000', '#3182bd', '#756bb1'] #intercept, correctness, trialnumber
 
 copes_mean = copes.copy().mean(axis=0)
 copes_sem = sp.stats.sem(copes, axis=0, ddof= 0)
-cope_cols = ['#2ca25f', '#e34a33', '#756bb1', '#000000', '#3182bd']
+cope_cols = ['#000000', '#3182bd', '#756bb1', '#2ca25f', '#e34a33']
 
 
 fig = plt.figure()
@@ -107,6 +107,9 @@ ax.set_xlabel('time relative to stim onset (s)')
 ax.set_ylabel('Beta (AU)')
 fig.suptitle('beta timecourse')
 fig.legend()
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas'+'.pdf'), dpi = 300, format = 'pdf')
+
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
@@ -123,6 +126,9 @@ ax.set_xlabel('time relative to stim onset (s)')
 ax.set_ylabel('Beta (AU)')
 fig.suptitle('cope timecourse')
 fig.legend()
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_copes'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_copes'+'.pdf'), dpi = 300, format = 'pdf')
+
 
 
 

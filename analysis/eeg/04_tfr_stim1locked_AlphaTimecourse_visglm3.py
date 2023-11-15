@@ -46,7 +46,7 @@ nsubs = subs.size
 # doesnt matter if you smooth per trial, or smooth the average. 
 # for regression, better to smooth trialwise
 # good to lightly smooth (1sd gaussian smoothing is not too much) for statistical power
-smoothing = False
+smoothing = True
 def gauss_smooth(array, sigma = 2):
     return sp.ndimage.gaussian_filter1d(array, sigma=sigma, axis = 1) #smooths across time, given 2d array of trials x time
 
@@ -73,15 +73,15 @@ for i in subs:
     copes[count] = icopes
     tstats[count] = itstats
 
-#%%
 if smoothing:
     #smooth the single subject beta/cope timecourses, rather than single trial timecourses
     for i in range(nsubs):
-        for ibeta in range(len(regnames)):
-            betas[i, ibeta] = gauss_smooth(betas[i, ibeta].copy())
+        # for ibeta in range(len(regnames)):
+        betas[i] = gauss_smooth(betas[i].copy())
         
-        for icope in range(len(contrasts)):
-            copes[i, icope] = gauss_smooth(copes[i, icope].copy())
+        # for icope in range(len(contrasts)):
+        copes[i] = gauss_smooth(copes[i].copy())
+#%%
             
 betas_mean = betas.copy().mean(axis=0)
 betas_sem = sp.stats.sem(betas, axis = 0, ddof=0)
@@ -92,8 +92,8 @@ copes_mean = copes.copy().mean(axis=0)
 copes_sem = sp.stats.sem(copes, axis=0, ddof= 0)
 cope_cols = ['#2ca25f', '#e34a33','#2ca25f', '#e34a33','#2ca25f', '#e34a33','#2ca25f', '#e34a33', '#756bb1', '#000000','#d7191c', '#fdae61', '#a6d96a', '#1a9641'] #diff2, diff4, diff8, diff12, trialnumber, grandmean
 #%%
-
-fig = plt.figure()
+difficulties = ['difficulty 2', 'difficulty 4', 'difficulty 6', 'difficulty 8']
+fig = plt.figure(figsize = (10, 6))
 plotcount = 0
 for iplot in np.arange(8):
     if np.mod(np.add(1,np.arange(8)),2)[iplot] == 1:
@@ -102,13 +102,18 @@ for iplot in np.arange(8):
         ax.set_xlim([-2.8, 3.8])
         ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
         ax.axvline(x=0, ls = 'dashed', color = '#000000', lw = 1)
+        ax.set_xlabel('time relative to stim1 onset (s)')
+        ax.set_ylabel('Alpha power (Beta, AU)')
+        ax.set_title(difficulties[plotcount-1])
     ax.plot(times, betas_mean[iplot], label = regnames[iplot], c = betas_cols[iplot])
     ax.fill_between(times,
                     y1 = np.add(betas_mean[iplot], betas_sem[iplot]),
                     y2 = np.subtract(betas_mean[iplot], betas_sem[iplot]),
                     color = betas_cols[iplot], alpha = 0.3, lw = 0)
-    ax.legend()
-# fig.legend()
+    ax.legend(loc = 'lower left')
+fig.tight_layout()
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas'+'.pdf'), dpi = 300, format = 'pdf')
 
 
 
@@ -129,3 +134,5 @@ ax.set_xlabel('time relative to stim onset (s)')
 ax.set_ylabel('Beta (AU)')
 fig.suptitle('cope timecourse')
 fig.legend()
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_copes'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_copes'+'.pdf'), dpi = 300, format = 'pdf')

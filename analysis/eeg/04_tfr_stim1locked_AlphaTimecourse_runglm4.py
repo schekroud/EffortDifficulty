@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Nov  9 22:39:15 2023
+Created on Wed Nov 15 12:37:07 2023
 
 @author: sammirc
 """
@@ -37,7 +37,9 @@ subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
 glms2run = 1 #1 with no baseline, one where tfr input data is baselined
 smooth = False #if smoothing single trial alpha timecourse
 transform = False #if converting power to decibels (10*log10 power)
-glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', 'glm1')
+glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', 'glm4')
+if not op.exists(glmdir):
+    os.mkdir(glmdir)
 
 for i in subs:
     for iglm in [1]: #controls whether glm is run on un-baselined or baselined data
@@ -58,9 +60,7 @@ for i in subs:
         
         #comes with metadata attached            
         tfr = tfr['fbtrig != 62'] #drop timeout trials
-        tfr = tfr['diffseqpos > 3'] #remove the first three trials of each new difficulty sequence
-        #so we only look at trials where they should have realised the difficulty level
-        
+    
         if i==21:
             #this ppt was sleepy in block 1, which massively drags down the average performance across other blocks (where performance was ok)
             #drop this block
@@ -101,45 +101,48 @@ for i in subs:
         correctness = tfr.metadata.PerceptDecCorrect.to_numpy()
         correct = tfr.metadata.rewarded.to_numpy()
         incorrect = tfr.metadata.unrewarded.to_numpy()
-        correctncorrectnesseess = np.where(correctness == 0, -1, correctness)
+        correctness = np.where(correctness == 0, -1, correctness)
         difficulty = tfr.metadata.difficultyOri.to_numpy()
         
-        DC = glm.design.DesignConfig()
-        DC.add_regressor(name = 'intercept', rtype = 'Constant') #add intercet to model average lateralisation
-        # DC.add_regressor(name = 'correct',   rtype = 'Categorical', datainfo = 'correct', codes = 1)
-        # DC.add_regressor(name = 'incorrect', rtype = 'Categorical', datainfo = 'incorrect', codes = 1)
-        DC.add_regressor(name = 'correctness', rtype = 'Parametric', datainfo = 'correctness', preproc = None)
-        DC.add_regressor(name = 'trialnumber', rtype = 'Parametric', datainfo = 'trialnum', preproc = None)
-        DC.add_simple_contrasts() #add basic diagonal matrix for copes
-        DC.add_contrast(values = [1, 1, 0], name = 'correct')
-        DC.add_contrast(values = [1,-1, 0], name = 'incorrect')
-    
-    #create glmdata object
-        glmdata = glm.data.TrialGLMData(data = tfrdat, time_dim = 1, sample_rate = 100,
-                                        #add in metadata that's used to construct the design matrix
-                                        correctness = correctness,
-                                        trialnum = trialnum
-                                        )
-    
-        glmdes = DC.design_from_datainfo(glmdata.info)
+        for idiff in np.sort(np.unique(difficulty)): #loop over each level of difficulty in the task and run glm
+            diffids = np.where(difficulty == idiff)[0]
+            tmpdat = tfrdat[diffids] #get data for just trials of this difficulty
+            idifftrls = np.ones(len(diffids)) #intercept for this difficulty
+            idiff_correctness = correctness[diffids] #get contrast regressor [corr, -incorr] for just this difficulty
+            idiff_trlidz = trialnum[diffids]
         
-        # glmdes.plot_summary(summary_lines=False)
-        # glmdes.plot_efficiency()
-        
-        print('\n - - - - -  running glm - - - - - \n')
-        model = glm.fit.OLSModel(glmdes, glmdata) #fit the actual model 
+            #set up design matrix for this difficulty level
+            DC = glm.design.DesignConfig()
+            DC.add_regressor(name = 'intercept', rtype = 'Constant')
+            DC.add_regressor(name = 'correctness', rtype = 'Parametric', datainfo = 'idiff_correctness', preproc = None)
+            DC.add_regressor(name = 'trialnumber', rtype = 'Parametric', datainfo = 'trialnumber', preproc= None)
+            DC.add_simple_contrasts()
+            DC.add_contrast(values = [1, 1, 0], name = 'correct')
+            DC.add_contrast(values = [1,-1, 0], name = 'incorrect')
             
-        betas = model.betas.copy()
-        copes = model.copes.copy()
-        tstats = model.tstats.copy()
+            glmdata = glm.data.TrialGLMData(data = tmpdat, time_dim = 1, sample_rate = 100,
+                                            idiff_correctness = idiff_correctness,
+                                            trialnumber = idiff_trlidz)
+            glmdes = DC.design_from_datainfo(glmdata.info)
+            
         
-        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_betas_.npy'), arr = betas)
-        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_copes_.npy'), arr = copes)
-        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_tstats_.npy'), arr = tstats)
-        
-        times = tfr.times
-        freqs = tfr.freqs
-        info = tfr.info
+            # glmdes.plot_summary(summary_lines=False)
+            # glmdes.plot_efficiency()
+            
+            print('\n - - - - -  running glm - - - - - \n')
+            model = glm.fit.OLSModel(glmdes, glmdata) #fit the actual model on this difficulty data
+            
+            betas = model.betas.copy()
+            copes = model.copes.copy()
+            tstats = model.tstats.copy()
+            
+            np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_betas_difficulty%s.npy'%str(idiff)), arr = betas)
+            np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_copes_difficulty%s.npy'%str(idiff)), arr = copes)
+            np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_tstats_difficulty%s.npy'%str(idiff)), arr = tstats)
+            
+            times = tfr.times
+            freqs = tfr.freqs
+            info = tfr.info
     
         # fig = plt.figure()
         # ax = fig.add_subplot(111)
@@ -150,16 +153,15 @@ for i in subs:
     
     
     
-    if i == 10: #for first subject, lets also save a couple things for this glm to help with visualising stuff
-        #going to save the times
-        np.save(file = op.join(glmdir, 'glm_timerange.npy'), arr= times)
-        #save regressor names and contrast names in the order they are in, to help know what is what
-        np.save(file = op.join(glmdir, 'regressor_names.npy'), arr = model.regressor_names)
-        np.save(file = op.join(glmdir, 'contrast_names.npy'),  arr = model.contrast_names)
+        if i == 10: #for first subject, lets also save a couple things for this glm to help with visualising stuff
+            #going to save the times
+            np.save(file = op.join(glmdir, 'glm_timerange.npy'), arr= times)
+            #save regressor names and contrast names in the order they are in, to help know what is what
+            np.save(file = op.join(glmdir, 'regressor_names.npy'), arr = model.regressor_names)
+            np.save(file = op.join(glmdir, 'contrast_names.npy'),  arr = model.contrast_names)
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     del(glmdata)
     del(glmdes)
     del(model)
     del(tfr)
-        
