@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov 10 12:50:19 2023
+Created on Tue Nov 28 13:22:50 2023
 
 @author: sammirc
 """
@@ -18,29 +18,20 @@ from scipy import stats
 %matplotlib
 mne.viz.set_browser_backend('qt')
 
-# sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-# sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
 sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-
 from funcs import getSubjectInfo, gesd, plot_AR
 
-# wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
-# wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
 wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
-
 os.chdir(wd)
-
-
-glmnum = 'glm2'
+glmnum = 'glm7'
 glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', glmnum)
 figpath = op.join(wd, 'figures', 'eeg_figs', 'stim1locked', glmnum)
-
 
 if not op.exists(figpath):
     os.mkdir(figpath)
 glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', glmnum)
 
-subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34])
 nsubs = subs.size
 
 # doesnt matter if you smooth per trial, or smooth the average. 
@@ -85,25 +76,26 @@ if smoothing:
             
 betas_mean = betas.copy().mean(axis=0)
 betas_sem = sp.stats.sem(betas, axis = 0, ddof=0)
-betas_cols = ['#d7191c', '#fdae61', '#a6d96a', '#1a9641', '#756bb1'] #diff2, diff4, diff8, diff12, trialnumber
+betas_cols = ['#000000', '#7570b3', '#e7298a', '#d95f02'] #intercept, correctness, prevtrlcorrectness, trialnumber
 
 copes_mean = copes.copy().mean(axis=0)
 copes_sem = sp.stats.sem(copes, axis=0, ddof= 0)
-cope_cols = ['#d7191c', '#fdae61', '#a6d96a', '#1a9641', '#756bb1', '#000000'] #diff2, diff4, diff8, diff12, trialnumber, grandmean
+cope_cols = ['#000000', '#7570b3', '#e7298a', '#d95f02', '#4daf4a', '#e41a1c', '#377eb8', '#984ea3']
 
-
+#%%
 fig = plt.figure()
 ax = fig.add_subplot(111)
 for ibeta in range(len(regnames)):
-    ax.plot(times, betas_mean[ibeta],label = regnames[ibeta], c=betas_cols[ibeta])
-    ax.fill_between(times,
-                    y1 = np.add(betas_mean[ibeta], betas_sem[ibeta]),
-                    y2 = np.subtract(betas_mean[ibeta], betas_sem[ibeta]),
-                    color = betas_cols[ibeta], alpha = 0.3, lw = 0)
+    if regnames[ibeta] != 'intercept':
+        ax.plot(times, betas_mean[ibeta],label = regnames[ibeta], c=betas_cols[ibeta])
+        ax.fill_between(times,
+                        y1 = np.add(betas_mean[ibeta], betas_sem[ibeta]),
+                        y2 = np.subtract(betas_mean[ibeta], betas_sem[ibeta]),
+                        color = betas_cols[ibeta], alpha = 0.3, lw = 0)
 ax.set_xlim([-2.8, 3.8])
 ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
 ax.axvline(x=0, ls = 'dashed', color = '#000000', lw = 1)
-ax.set_xlabel('time relative to stim onset (s)')
+ax.set_xlabel('time relative to stim 1 onset (s)')
 ax.set_ylabel('Beta (AU)')
 fig.suptitle('beta timecourse')
 fig.legend()
@@ -111,21 +103,41 @@ fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas'+'.eps'), 
 fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas'+'.pdf'), dpi = 300, format = 'pdf')
 
 
+fig = plt.figure()
+ax = fig.add_subplot(111)
+for icope in range(len(contrasts)):
+    if contrasts[icope] not in ['intercept', 'prevtrlcorrectness', 'prevtrlcorrect', 'prevtrlincorrect']:
+        ax.plot(times, copes_mean[icope],label = contrasts[icope], c=cope_cols[icope])
+        ax.fill_between(times,
+                        y1 = np.add(copes_mean[icope], copes_sem[icope]),
+                        y2 = np.subtract(copes_mean[icope], copes_sem[icope]),
+                        color = cope_cols[icope], alpha = 0.3, lw = 0)
+ax.set_xlim([-2.8, 3.8])
+ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
+ax.axvline(x=0, ls = 'dashed', color = '#000000', lw = 1)
+ax.set_xlabel('time relative to stim 1 onset (s)')
+ax.set_ylabel('Beta (AU)')
+fig.suptitle('cope timecourse')
+fig.legend()
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_copes_currentTrial'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_copes_currentTrial'+'.pdf'), dpi = 300, format = 'pdf')
 
 fig = plt.figure()
 ax = fig.add_subplot(111)
 for icope in range(len(contrasts)):
-    ax.plot(times, copes_mean[icope],label = contrasts[icope], c=cope_cols[icope])
-    ax.fill_between(times,
-                    y1 = np.add(copes_mean[icope], copes_sem[icope]),
-                    y2 = np.subtract(copes_mean[icope], copes_sem[icope]),
-                    color = cope_cols[icope], alpha = 0.3, lw = 0)
+    if contrasts[icope] not in ['intercept', 'correctness', 'correct', 'incorrect']:
+        ax.plot(times, copes_mean[icope],label = contrasts[icope], c=cope_cols[icope])
+        ax.fill_between(times,
+                        y1 = np.add(copes_mean[icope], copes_sem[icope]),
+                        y2 = np.subtract(copes_mean[icope], copes_sem[icope]),
+                        color = cope_cols[icope], alpha = 0.3, lw = 0)
 ax.set_xlim([-2.8, 3.8])
 ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
 ax.axvline(x=0, ls = 'dashed', color = '#000000', lw = 1)
-ax.set_xlabel('time relative to stim onset (s)')
+ax.set_xlabel('time relative to stim 1 onset (s)')
 ax.set_ylabel('Beta (AU)')
 fig.suptitle('cope timecourse')
 fig.legend()
-fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_copes'+'.eps'), dpi = 300, format = 'eps')
-fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_copes'+'.pdf'), dpi = 300, format = 'pdf')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_copes_prevTrial'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_copes_prevTrial'+'.pdf'), dpi = 300, format = 'pdf')
+

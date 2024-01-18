@@ -18,20 +18,13 @@ import sys
 from matplotlib import pyplot as plt
 %matplotlib
 
-# sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-# sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
 sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-
 from funcs import getSubjectInfo, gesd, plot_AR
 
-# wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
-# wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
 wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
-
 os.chdir(wd)
-
-subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
-# subs = np.array([                            17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34])
+subs = [29, 30]
 
 for i in subs:
     print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
@@ -64,4 +57,4 @@ for i in subs:
     epoched.metadata.to_csv(param['behaviour'].replace('combined', 'stim1locked_combined_eegcleaned'))
     
     del(epoched)
-    # plt.close('all')
+    plt.close('all')

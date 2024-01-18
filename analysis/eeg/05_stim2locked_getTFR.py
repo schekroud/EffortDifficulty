@@ -23,10 +23,9 @@ from funcs import getSubjectInfo, gesd, plot_AR
 # wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
 # wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
 wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
-
 os.chdir(wd)
-
-subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34])
+subs = [29, 30]
 
 for i in subs:
     for run in [1,2]: #[1, 2]
@@ -66,7 +65,7 @@ for i in subs:
                                                     use_fft=True, return_itc=False, average=False, n_jobs = 2)
             tfr.metadata.to_csv(param['behaviour'].replace('combined.csv', 'combined_stim2lockedtfr.csv'), index=False)
             print('\nSaving TFR data')
-            tfr.save(fname = out_fname, overwrite = True)
+            # tfr.save(fname = out_fname, overwrite = True)
             
             print('saving only alpha frequency data')
             tfr.crop(fmin = 8, fmax = 12)

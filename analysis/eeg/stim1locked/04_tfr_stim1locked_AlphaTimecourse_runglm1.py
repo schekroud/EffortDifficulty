@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov 10 12:57:48 2023
+Created on Thu Nov  9 22:39:15 2023
 
 @author: sammirc
 """
@@ -32,14 +32,12 @@ os.chdir(wd)
 import glmtools as glm
 
 
-subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34])
 
 glms2run = 1 #1 with no baseline, one where tfr input data is baselined
 smooth = False #if smoothing single trial alpha timecourse
 transform = False #if converting power to decibels (10*log10 power)
-glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', 'glm3')
-if not op.exists(glmdir):
-    os.mkdir(glmdir)
+glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', 'glm1')
 
 for i in subs:
     for iglm in [1]: #controls whether glm is run on un-baselined or baselined data
@@ -60,7 +58,9 @@ for i in subs:
         
         #comes with metadata attached            
         tfr = tfr['fbtrig != 62'] #drop timeout trials
-    
+        tfr = tfr['diffseqpos > 3'] #remove the first three trials of each new difficulty sequence
+        #so we only look at trials where they should have realised the difficulty level
+        
         if i==21:
             #this ppt was sleepy in block 1, which massively drags down the average performance across other blocks (where performance was ok)
             #drop this block
@@ -101,40 +101,24 @@ for i in subs:
         correctness = tfr.metadata.PerceptDecCorrect.to_numpy()
         correct = tfr.metadata.rewarded.to_numpy()
         incorrect = tfr.metadata.unrewarded.to_numpy()
-        correctness = np.where(correctness == 0, -1, correctness)
+        correctncorrectnesseess = np.where(correctness == 0, -1, correctness)
         difficulty = tfr.metadata.difficultyOri.to_numpy()
-        diffcorr = np.multiply(difficulty, correctness)
         
         DC = glm.design.DesignConfig()
-        # DC.add_regressor(name = 'intercept', rtype = 'Constant') #add intercet to model average lateralisation
+        DC.add_regressor(name = 'intercept', rtype = 'Constant') #add intercet to model average lateralisation
         # DC.add_regressor(name = 'correct',   rtype = 'Categorical', datainfo = 'correct', codes = 1)
         # DC.add_regressor(name = 'incorrect', rtype = 'Categorical', datainfo = 'incorrect', codes = 1)
-        DC.add_regressor(name = 'difficulty2corr',    rtype = 'Categorical', datainfo = 'diffcorr', codes =   2)
-        DC.add_regressor(name = 'difficulty2incorr',  rtype = 'Categorical', datainfo = 'diffcorr', codes =  -2)
-        DC.add_regressor(name = 'difficulty4corr',    rtype = 'Categorical', datainfo = 'diffcorr', codes =   4)
-        DC.add_regressor(name = 'difficulty4incorr',  rtype = 'Categorical', datainfo = 'diffcorr', codes =  -4)
-        DC.add_regressor(name = 'difficulty8corr',    rtype = 'Categorical', datainfo = 'diffcorr', codes =   8)
-        DC.add_regressor(name = 'difficulty8incorr',  rtype = 'Categorical', datainfo = 'diffcorr', codes =  -8)
-        DC.add_regressor(name = 'difficulty12corr',   rtype = 'Categorical', datainfo = 'diffcorr', codes =  12)
-        DC.add_regressor(name = 'difficulty12incorr', rtype = 'Categorical', datainfo = 'diffcorr', codes = -12)
-
-        DC.add_regressor(name = 'trialnumber', rtype = 'Parametric', datainfo = 'trialnum')
+        DC.add_regressor(name = 'correctness', rtype = 'Parametric', datainfo = 'correctness', preproc = None)
+        DC.add_regressor(name = 'trialnumber', rtype = 'Parametric', datainfo = 'trialnum', preproc = None)
         DC.add_simple_contrasts() #add basic diagonal matrix for copes
-        DC.add_contrast(values = [1, 1, 1, 1, 1, 1, 1, 1, 0], name = 'grandmean')
-        DC.add_contrast(values = [1, 1, 0, 0, 0, 0, 0, 0, 0], name = 'diff2')
-        DC.add_contrast(values = [0, 0, 1, 1, 0, 0, 0, 0, 0], name = 'diff4')
-        DC.add_contrast(values = [0, 0, 0, 0, 1, 1, 0, 0, 0], name = 'diff8')
-        DC.add_contrast(values = [0, 0, 0, 0, 0, 0, 1, 1, 0], name = 'diff12')
-        
+        DC.add_contrast(values = [1, 1, 0], name = 'correct')
+        DC.add_contrast(values = [1,-1, 0], name = 'incorrect')
     
-        #create glmdata object
+    #create glmdata object
         glmdata = glm.data.TrialGLMData(data = tfrdat, time_dim = 1, sample_rate = 100,
                                         #add in metadata that's used to construct the design matrix
-                                        correct = correct,
-                                        incorrect = incorrect, 
-                                        trialnum = trialnum,
-                                        difficulty = difficulty,
-                                        diffcorr = diffcorr
+                                        correctness = correctness,
+                                        trialnum = trialnum
                                         )
     
         glmdes = DC.design_from_datainfo(glmdata.info)
@@ -159,11 +143,13 @@ for i in subs:
     
         # fig = plt.figure()
         # ax = fig.add_subplot(111)
-        # ax.plot(times, betas.T, label = model.regressor_names, lw = 1)
+        # ax.plot(times, copes.T, label = model.contrast_names, lw = 1)
         # ax.axvline(x = 0, ls = 'dashed', color = '#000000', lw = 1)
         # ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
         # fig.legend()
-
+    
+    
+    
     if i == 10: #for first subject, lets also save a couple things for this glm to help with visualising stuff
         #going to save the times
         np.save(file = op.join(glmdir, 'glm_timerange.npy'), arr= times)
@@ -176,3 +162,4 @@ for i in subs:
     del(glmdes)
     del(model)
     del(tfr)
+        

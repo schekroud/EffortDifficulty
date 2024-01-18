@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Nov 10 13:21:35 2023
+Created on Fri Nov 10 14:27:41 2023
 
 @author: sammirc
 """
-
 import numpy as np
 import scipy as sp
 import pandas as pd
@@ -32,12 +31,11 @@ os.chdir(wd)
 import glmtools as glm
 
 
-subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
-
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34])
 glms2run = 1 #1 with no baseline, one where tfr input data is baselined
 smooth = False #if smoothing single trial alpha timecourse
 transform = False #if converting power to decibels (10*log10 power)
-glmdir = op.join(wd, 'glms', 'stim2locked', 'alpha_timecourses', 'glm1')
+glmdir = op.join(wd, 'glms', 'stim2locked', 'alpha_timecourses', 'glm3')
 if not op.exists(glmdir):
     os.mkdir(glmdir)
 
@@ -83,10 +81,9 @@ for i in subs:
         
         #comes with metadata attached            
         tfr = tfr['fbtrig != 62'] #drop timeout trials
-        
         tfr = tfr['diffseqpos > 3'] #remove the first three trials of each new difficulty sequence
         #so we only look at trials where they should have realised the difficulty level
-        
+            
         if i==21:
             #this ppt was sleepy in block 1, which massively drags down the average performance across other blocks (where performance was ok)
             #drop this block
@@ -95,7 +92,6 @@ for i in subs:
         if i == 25:
             #problem with the keyboard in block 1, drags down average performance across other blocks for one of the conditions
             tfr = tfr['blocknumber > 1']
-    
             
         tfrdat = tfr.copy().pick_channels(posterior_channels).data.copy()
         tfrdat = np.mean(tfrdat, axis = 2) #average across the frequency band, results in trials x channels x time
@@ -114,22 +110,38 @@ for i in subs:
         incorrect = tfr.metadata.unrewarded.to_numpy()
         correctness = np.where(correctness == 0, -1, correctness)
         difficulty = tfr.metadata.difficultyOri.to_numpy()
+        diffcorr = np.multiply(difficulty, correctness)
         
         DC = glm.design.DesignConfig()
-        DC.add_regressor(name = 'intercept', rtype = 'Constant') #add intercet to model average lateralisation
-        DC.add_regressor(name = 'correctness', rtype = 'Parametric', datainfo = 'correctness', preproc = None)
+        # DC.add_regressor(name = 'intercept', rtype = 'Constant') #add intercet to model average lateralisation
         # DC.add_regressor(name = 'correct',   rtype = 'Categorical', datainfo = 'correct', codes = 1)
         # DC.add_regressor(name = 'incorrect', rtype = 'Categorical', datainfo = 'incorrect', codes = 1)
+        DC.add_regressor(name = 'difficulty2corr',    rtype = 'Categorical', datainfo = 'diffcorr', codes =   2)
+        DC.add_regressor(name = 'difficulty2incorr',  rtype = 'Categorical', datainfo = 'diffcorr', codes =  -2)
+        DC.add_regressor(name = 'difficulty4corr',    rtype = 'Categorical', datainfo = 'diffcorr', codes =   4)
+        DC.add_regressor(name = 'difficulty4incorr',  rtype = 'Categorical', datainfo = 'diffcorr', codes =  -4)
+        DC.add_regressor(name = 'difficulty8corr',    rtype = 'Categorical', datainfo = 'diffcorr', codes =   8)
+        DC.add_regressor(name = 'difficulty8incorr',  rtype = 'Categorical', datainfo = 'diffcorr', codes =  -8)
+        DC.add_regressor(name = 'difficulty12corr',   rtype = 'Categorical', datainfo = 'diffcorr', codes =  12)
+        DC.add_regressor(name = 'difficulty12incorr', rtype = 'Categorical', datainfo = 'diffcorr', codes = -12)
+
         DC.add_regressor(name = 'trialnumber', rtype = 'Parametric', datainfo = 'trialnum')
         DC.add_simple_contrasts() #add basic diagonal matrix for copes
-        DC.add_contrast(values = [1, 1, 0], name = 'correct')
-        DC.add_contrast(values = [1,-1, 0], name = 'incorrect')
+        DC.add_contrast(values = [1, 1, 1, 1, 1, 1, 1, 1, 0], name = 'grandmean')
+        DC.add_contrast(values = [1, 1, 0, 0, 0, 0, 0, 0, 0], name = 'diff2')
+        DC.add_contrast(values = [0, 0, 1, 1, 0, 0, 0, 0, 0], name = 'diff4')
+        DC.add_contrast(values = [0, 0, 0, 0, 1, 1, 0, 0, 0], name = 'diff8')
+        DC.add_contrast(values = [0, 0, 0, 0, 0, 0, 1, 1, 0], name = 'diff12')
+        
     
-    #create glmdata object
+        #create glmdata object
         glmdata = glm.data.TrialGLMData(data = tfrdat, time_dim = 1, sample_rate = 100,
                                         #add in metadata that's used to construct the design matrix
-                                        correctness = correctness,
-                                        trialnum = trialnum
+                                        correct = correct,
+                                        incorrect = incorrect, 
+                                        trialnum = trialnum,
+                                        difficulty = difficulty,
+                                        diffcorr = diffcorr
                                         )
     
         glmdes = DC.design_from_datainfo(glmdata.info)
@@ -143,22 +155,22 @@ for i in subs:
         betas = model.betas.copy()
         copes = model.copes.copy()
         tstats = model.tstats.copy()
-        times = tfr.times
-        freqs = tfr.freqs
-        info = tfr.info
         
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111)
-        # ax.plot(times, copes.T, label = model.contrast_names, lw = 1)
-        # ax.axvline(x = 0, ls = 'dashed', color = '#000000', lw = 1)
-        # ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
-        # fig.legend()
-    
         np.save(file = op.join(glmdir, param['subid'] + '_stim2lockedTFR_betas_.npy'), arr = betas)
         np.save(file = op.join(glmdir, param['subid'] + '_stim2lockedTFR_copes_.npy'), arr = copes)
         np.save(file = op.join(glmdir, param['subid'] + '_stim2lockedTFR_tstats_.npy'), arr = tstats)
+        
+        times = tfr.times
+        freqs = tfr.freqs
+        info = tfr.info
     
-    
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111)
+        # ax.plot(times, betas.T, label = model.regressor_names, lw = 1)
+        # ax.axvline(x = 0, ls = 'dashed', color = '#000000', lw = 1)
+        # ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
+        # fig.legend()
+
     if i == 10: #for first subject, lets also save a couple things for this glm to help with visualising stuff
         #going to save the times
         np.save(file = op.join(glmdir, 'glm_timerange.npy'), arr= times)
@@ -171,4 +183,3 @@ for i in subs:
     del(glmdes)
     del(model)
     del(tfr)
-        

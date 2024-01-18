@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Nov 13 18:10:09 2023
+Created on Wed Nov 15 12:40:40 2023
 
 @author: sammirc
 """
@@ -32,15 +32,16 @@ os.chdir(wd)
 
 
 glmnum = 'glm4'
-glmdir = op.join(wd, 'glms', 'stim2locked', 'alpha_timecourses', glmnum)
-figpath = op.join(wd, 'figures', 'eeg_figs', 'stim2locked', glmnum)
+glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', glmnum)
+figpath = op.join(wd, 'figures', 'eeg_figs', 'stim1locked', glmnum)
 
 
 if not op.exists(figpath):
     os.mkdir(figpath)
-glmdir = op.join(wd, 'glms', 'stim2locked', 'alpha_timecourses', glmnum)
+glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', glmnum)
 
-subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,     32, 33, 34])
 # subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,     22, 23, 24,     26])
 nsubs = subs.size 
 
@@ -75,9 +76,9 @@ for i in subs:
     param = getSubjectInfo(sub)
     for diff in difficulties:
         diffcount +=1        
-        ibetas  = np.load(file = op.join(glmdir, param['subid'] + '_stim2lockedTFR_betas_difficulty%s.npy'%str(diff)))
-        icopes  = np.load(file = op.join(glmdir, param['subid'] + '_stim2lockedTFR_copes_difficulty%s.npy'%str(diff)))
-        itstats = np.load(file = op.join(glmdir, param['subid'] + '_stim2lockedTFR_tstats_difficulty%s.npy'%str(diff)))
+        ibetas  = np.load(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_betas_difficulty%s.npy'%str(diff)))
+        icopes  = np.load(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_copes_difficulty%s.npy'%str(diff)))
+        itstats = np.load(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_tstats_difficulty%s.npy'%str(diff)))
         
         betas[count, diffcount] = ibetas
         copes[count, diffcount] = icopes
@@ -112,15 +113,15 @@ for diff in range(len(difficulties)):
                             y1 = np.add(betas_mean[diff, ireg], betas_sem[diff, ireg]),
                             y2 = np.subtract(betas_mean[diff, ireg], betas_sem[diff, ireg]),
                             color = betas_cols[ireg], alpha = 0.3, lw = 0)
-    ax.set_xlim([-2.7, 1.7])
+    ax.set_xlim([-2.8, 3.8])
     ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
     ax.axvline(x=0, ls = 'dashed', color = '#000000', lw = 1)
-    ax.set_xlabel('time relative to stim 2 onset (s)')
+    ax.set_xlabel('time relative to stim 1 onset (s)')
     ax.set_ylabel('Beta (AU)')
     ax.legend()
 fig.tight_layout()
-fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_betas'+'.eps'), dpi = 300, format = 'eps')
-fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_betas'+'.pdf'), dpi = 300, format = 'pdf')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas'+'.pdf'), dpi = 300, format = 'pdf')
 
 
 fig = plt.figure(figsize = (10,7))
@@ -135,17 +136,51 @@ for diff in range(len(difficulties)):
                             y1 = np.add(copes_mean[diff, icope], copes_sem[diff, icope]),
                             y2 = np.subtract(copes_mean[diff, icope], copes_sem[diff, icope]),
                             color = cope_cols[icope], alpha = 0.3, lw = 0)
-    ax.set_xlim([-2.7, 1.7])
+    ax.set_xlim([-2.8, 3.8])
     ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
     ax.axvline(x=0, ls = 'dashed', color = '#000000', lw = 1)
-    ax.set_xlabel('time relative to stim 2 onset (s)')
+    ax.set_xlabel('time relative to stim 1 onset (s)')
     ax.set_ylabel('Beta (AU)')
     ax.legend()
 fig.tight_layout()
-fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_copes'+'.eps'), dpi = 300, format = 'eps')
-fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_copes'+'.pdf'), dpi = 300, format = 'pdf')
-#%%
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas'+'.pdf'), dpi = 300, format = 'pdf')
 
+#%%
+#plot for each subject, just to see individual traces
+fig = plt.figure(figsize = [15,10])
+fig.suptitle('difficulty 4')
+for i in range(nsubs):
+    ax = fig.add_subplot(5, 5, i+1)
+    ax.set_title('subject '+str(subs[i]))
+    for icope in range(len(contrasts)):
+        if contrasts[icope] in ['correct', 'incorrect']:
+            ax.plot(times, copes[i, 1, icope].T, label = contrasts[icope], c = cope_cols[icope])
+    ax.set_xlim([-2.8, 3.8])
+    ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
+    ax.axvline(x=0, ls = 'dashed', color = '#000000', lw = 1)
+    ax.set_xlabel('time relative to stim 1 onset (s)')
+    ax.set_ylabel('Beta (AU)')
+    # ax.legend()
+
+#%%
+#plot for each subject, just to see individual traces
+fig = plt.figure(figsize = [15,10])
+fig.suptitle('difficulty 2')
+for i in range(nsubs):
+    ax = fig.add_subplot(5, 5, i+1)
+    ax.set_title('subject '+str(subs[i]))
+    for icope in range(len(contrasts)):
+        if contrasts[icope] in ['correct', 'incorrect']:
+            ax.plot(times, copes[i, 0, icope].T, label = contrasts[icope], c = cope_cols[icope])
+    ax.set_xlim([-2.8, 3.8])
+    ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
+    ax.axvline(x=0, ls = 'dashed', color = '#000000', lw = 1)
+    ax.set_xlabel('time relative to stim 1 onset (s)')
+    ax.set_ylabel('Beta (AU)')
+    # ax.legend()
+
+#%%
 diffcols =['#d7191c', '#fdae61', '#a6d96a', '#1a9641'] 
 difflabels = ['difficulty 2', 'difficulty 4', 'difficulty 8', 'difficulty 12']
 fig = plt.figure()
@@ -156,11 +191,11 @@ for idiff in range(len(difficulties)):
                     y1 = np.add(betas_mean[idiff,0], betas_sem[idiff, 0]),
                     y2 = np.subtract(betas_mean[idiff,0], betas_sem[idiff, 0]),
                     color = diffcols[idiff], alpha = 0.3, lw = 0)
-ax.set_xlim([-2.7, 1.7])
+ax.set_xlim([-2.8, 3.8])
 ax.axhline(y = 0, ls = 'dashed', color = '#000000', lw = 1)
 ax.axvline(x=0, ls = 'dashed', color = '#000000', lw = 1)
-ax.set_xlabel('time relative to stim 2 onset (s)')
+ax.set_xlabel('time relative to stim 1 onset (s)')
 ax.set_ylabel('Beta (AU)')
 ax.legend()
-fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_betas_difficulty'+'.eps'), dpi = 300, format = 'eps')
-fig.savefig(fname = op.join(figpath, 'stim2locked_tfr'+glmnum+'_betas_difficulty'+'.pdf'), dpi = 300, format = 'pdf')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas_difficulty'+'.eps'), dpi = 300, format = 'eps')
+fig.savefig(fname = op.join(figpath, 'stim1locked_tfr'+glmnum+'_betas_difficulty'+'.pdf'), dpi = 300, format = 'pdf')
