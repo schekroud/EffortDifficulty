@@ -31,7 +31,8 @@ def getSubjectInfo(subject, ):
     eegpath = path[:-5] #remove /data  from pathstring 
     
     param['subid']          = substr 
-    param['behaviour']      = op.join(path, 'datafiles', 'EffortDifficulty_s%02d_combined.csv'%subject['id']) #behavioural data file
+    # param['behaviour']      = op.join(path, 'datafiles', 'EffortDifficulty_s%02d_combined.csv'%subject['id']) #behavioural data file
+    param['behaviour']      = op.join(path, 'datafiles', 'combined', 'EffortDifficulty_s%02d_combined_py.csv'%subject['id']) #behavioural data file
     param['raweeg']         = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d.dat'%subject['id']) # raw eeg data
     param['eeg_preproc']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_preproc-raw.fif'%subject['id']) #preprocessed data
     param['asc']            = op.join(path, 'eyes', 'asc', 'EffDS%02da.asc'%subject['id'])
@@ -61,14 +62,52 @@ def getSubjectInfo(subject, ):
         param['badchans'] = []
     if subject['id'] == 16:
         param['badchans'] = ['T8', 'TP7']
-    # if subject['id'] == 17:
-    #     param['badchans'] = []
-    # if subject['id'] == 18:
-    #     param['badchans'] = []
-    # if subject['id'] == 19:
-    #     param['badchans'] = []
-    # if subject['id'] == 20:
-    #     param['badchans'] = []
+    if subject['id'] == 17:
+        param['badchans'] = []
+    if subject['id'] == 18:
+        param['badchans'] = ['T7', 'T8', 'TP7', 'TP8']
+    if subject['id'] == 19:
+        param['badchans'] = []
+    if subject['id'] == 20:
+        param['badchans'] = []
+    if subject['id'] == 21:
+        param['badchans'] = []
+    if subject['id'] == 22:
+        param['badchans'] = []
+    if subject['id'] == 23:
+        param['badchans'] = []
+    if subject['id'] == 24:
+        param['badchans'] = ['T7', 'T8']
+    if subject['id'] == 25:
+        param['badchans'] = []
+    if subject['id'] == 26:
+        param['badchans'] = []
+    if subject['id'] == 27:
+        param['badchans'] = []
+    if subject['id'] == 28:
+        param['badchans'] = []
+    if subject['id'] == 29:
+        param['badchans'] = []
+    if subject['id'] == 30:
+        param['badchans'] = []
+    if subject['id'] == 31:
+        param['badchans'] = []
+    if subject['id'] == 32:
+        param['badchans'] = []
+    if subject['id'] == 33:
+        param['badchans'] = []
+    if subject['id'] == 34:
+        param['badchans'] = ['T7', 'T8']
+    if subject['id'] == 35:
+        param['badchans'] = []
+    if subject['id'] == 36:
+        param['badchans'] = []
+    if subject['id'] == 37:
+        param['badchans'] = []
+    if subject['id'] == 38:
+        param['badchans'] = []
+    if subject['id'] == 39:
+        param['badchans'] = ['TP7', 'T7', 'TP8']
     
         
     return param
@@ -236,3 +275,138 @@ def plot_AR(epochs, method = 'gesd', zthreshold = 1.5, p_out = .1, alpha = .05, 
 
 
     return axis, keep_idx
+
+
+def streaks(array):
+    '''
+    finds streaks of 1/0s in an array
+    '''
+    x = np.zeros(array.size).astype(int)
+    count = 0
+    for ind in range(len(x)):
+        if array[ind]:
+            count += 1
+        else:
+            count = 0
+        x[ind] = count
+    
+    return x
+
+def streaks_numbers(array):
+    '''
+    
+
+    Parameters
+    ----------
+    array : np.array
+        array of numbers you want to find streaks in
+
+    Returns
+    -------
+    numpy array. when a new value is found vs previous, the value of x is 1.
+    
+    It increases incrementally with each repeated number to count how many values have the same value as the previous
+
+    '''
+    
+    x = np.zeros(array.size).astype(int)
+    count = 0
+    for ind in range(len(x)):
+        if array[ind] == array[ind-1]:
+            count += 1 #continuing the sequence
+        else: #changed
+            count = 1
+        x[ind] = count
+    
+    return x
+
+def get_difficulty_sequences(subdat):
+    '''
+    
+
+    Parameters
+    ----------
+    subdat : pandas dataframe
+        dataframe containing participant behaviour. must contain column called `blocknumber` to separate blocks, and `trialdifficulty` to know difficulty on each trial of the task
+
+    Returns
+    -------
+    pandas dataframe
+        contains two new columns:
+            sinceDifficultySwitch - number of trials since the difficulty changed
+            untilDifficultySwitch - how many trials are left until the difficulty will change
+
+    '''
+    
+    data = subdat.copy()
+    nruns = data.blocknumber.unique().size #get how many task blocks, as difficulty starts fresh each block
+    df = pd.DataFrame() #make a new dataframe to append to, and return at the end
+    
+    for run in np.add(range(nruns),1): #loop over blocks
+        rundat = data.copy().query('blocknumber == @run') #get data for this block
+        
+        #getting streaks in difficulty sequence
+        streaks1 = streaks_numbers(rundat.trialdifficulty.to_numpy()) #trials since difficulty changed
+        streaks2 = np.flip(streaks_numbers(np.flip(rundat.trialdifficulty.to_numpy()))) #trials until difficulty changes
+        rundat = rundat.assign(
+            sinceDifficultySwitch = streaks1,
+            untilDifficultySwitch = streaks2)
+        df = pd.concat([df, rundat])
+    
+    return df
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
