@@ -19,15 +19,20 @@ import sklearn as skl
 from sklearn import *
 %matplotlib
 
-sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+sys.path.insert(0, '/Users/sammichekroud/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
 import eyefuncs as eyes
 
-wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
+wd = '/Users/sammichekroud/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 os.chdir(wd)
 
 eyedir = op.join(wd, 'data', 'eyes')
 
-subs = [3, 4, 5, 7, 8, 9, 10, 11]
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,             39])
+#29/30 just need some fixing
+#36/37 are unusable
+#38 we changed the eye that was tracked partway through, so it is struggling to read this dataset properly (as it expects a specific channel name)
+#can probably patch this, but ignore for now
 
 plot_steps = False
 #%%
@@ -63,8 +68,10 @@ for sub in subs:
                 #this subject did 3 blocks of task,
                 #but you can only quit at the start of a block so it still got a start/end message
             print('\nloading in participant data')
-            data = eyes.parse_eye_data(op.join(eyedir, 'asc', fname),
-                                       block_rec = True, trial_rec = False, nblocks = beh_nblocks,
+            data = eyes.parse_eye_data(eye_fname = op.join(eyedir, 'asc', fname),
+                                       block_rec = True,
+                                       trial_rec = False,
+                                       nblocks = beh_nblocks,
                                        binocular = False) #read in the data
             
             if not op.exists(rawname):
@@ -107,18 +114,18 @@ for sub in subs:
         time = deepcopy(data[0]['trackertime']) - data[0]['trackertime'][0]
         #gets blinks using info from the pupil trace. sets blink periods to nan
         print('\nfinding blinks from the pupil trace')
-        data_cleaned = eyes.cleanblinks_usingpupil(data, nblocks = nblocks)
+        data_cleaned = eyes.cleanblinks_usingpupil(data, nblocks = beh_nblocks)
         
         #visualise the effect of this
         
-        # fig = plt.figure()
-        # for iblock in range(len(data)):
-        #     tmpdata = deepcopy(data_cleaned[iblock])
-        #     tmpp = deepcopy(tmpdata['p'])
-        #     tmpp[tmpdata['badsamps']] = np.nan
-        #     ax = fig.add_subplot(len(data), 1, iblock+1)
-        #     ax.plot(ds[iblock]['trackertime'], ds[iblock]['p'], lw = 1, color = '#3182bd', label = 'pupil')
-        #     ax.plot(tmpdata['trackertime'], tmpp, lw = 1, color = '#fdae6b')
+        fig = plt.figure()
+        for iblock in range(len(data)):
+            tmpdata = deepcopy(data_cleaned[iblock])
+            tmpp = deepcopy(tmpdata['p'])
+            tmpp[tmpdata['badsamps']] = np.nan
+            ax = fig.add_subplot(len(data), 1, iblock+1)
+            ax.plot(ds[iblock]['trackertime'], ds[iblock]['p'], lw = 1, color = '#3182bd', label = 'pupil')
+            ax.plot(tmpdata['trackertime'], tmpp, lw = 1, color = '#fdae6b')
         
         #data_cleaned has bad samples as nans and no other information stored. can probably pass this on for future stuff.
         
