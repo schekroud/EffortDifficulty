@@ -11,6 +11,8 @@ import scipy as sp
 from copy import deepcopy
 import pandas as pd
 from matplotlib import pyplot as plt
+import mne
+
 
 def getSubjectInfo(subject, ):
     
@@ -31,6 +33,10 @@ def getSubjectInfo(subject, ):
     eegpath = path[:-5] #remove /data  from pathstring 
     
     param['subid']          = substr 
+<<<<<<< HEAD
+=======
+    # param['behaviour']      = op.join(path, 'datafiles', 'EffortDifficulty_s%02d_combined.csv'%subject['id']) #behavioural data file
+>>>>>>> b415f22423f373219f3b6d62ba3848c5fcc09a27
     param['behaviour']      = op.join(path, 'datafiles', 'combined', 'EffortDifficulty_s%02d_combined_py.csv'%subject['id']) #behavioural data file
     param['raweeg']         = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d.dat'%subject['id']) # raw eeg data
     param['eeg_preproc']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_preproc-raw.fif'%subject['id']) #preprocessed data
@@ -65,14 +71,52 @@ def getSubjectInfo(subject, ):
         param['badchans'] = []
     if subject['id'] == 16:
         param['badchans'] = ['T8', 'TP7']
-    # if subject['id'] == 17:
-    #     param['badchans'] = []
-    # if subject['id'] == 18:
-    #     param['badchans'] = []
-    # if subject['id'] == 19:
-    #     param['badchans'] = []
-    # if subject['id'] == 20:
-    #     param['badchans'] = []
+    if subject['id'] == 17:
+        param['badchans'] = []
+    if subject['id'] == 18:
+        param['badchans'] = ['T7', 'T8', 'TP7', 'TP8']
+    if subject['id'] == 19:
+        param['badchans'] = []
+    if subject['id'] == 20:
+        param['badchans'] = []
+    if subject['id'] == 21:
+        param['badchans'] = []
+    if subject['id'] == 22:
+        param['badchans'] = []
+    if subject['id'] == 23:
+        param['badchans'] = []
+    if subject['id'] == 24:
+        param['badchans'] = ['T7', 'T8']
+    if subject['id'] == 25:
+        param['badchans'] = []
+    if subject['id'] == 26:
+        param['badchans'] = []
+    if subject['id'] == 27:
+        param['badchans'] = []
+    if subject['id'] == 28:
+        param['badchans'] = []
+    if subject['id'] == 29:
+        param['badchans'] = []
+    if subject['id'] == 30:
+        param['badchans'] = []
+    if subject['id'] == 31:
+        param['badchans'] = []
+    if subject['id'] == 32:
+        param['badchans'] = []
+    if subject['id'] == 33:
+        param['badchans'] = []
+    if subject['id'] == 34:
+        param['badchans'] = ['T7', 'T8']
+    if subject['id'] == 35:
+        param['badchans'] = []
+    if subject['id'] == 36:
+        param['badchans'] = []
+    if subject['id'] == 37:
+        param['badchans'] = []
+    if subject['id'] == 38:
+        param['badchans'] = []
+    if subject['id'] == 39:
+        param['badchans'] = ['TP7', 'T7', 'TP8']
     
         
     return param
@@ -240,3 +284,187 @@ def plot_AR(epochs, method = 'gesd', zthreshold = 1.5, p_out = .1, alpha = .05, 
 
 
     return axis, keep_idx
+
+
+def streaks(array):
+    '''
+    finds streaks of 1/0s in an array
+    '''
+    x = np.zeros(array.size).astype(int)
+    count = 0
+    for ind in range(len(x)):
+        if array[ind]:
+            count += 1
+        else:
+            count = 0
+        x[ind] = count
+    
+    return x
+
+def streaks_numbers(array):
+    '''
+    
+
+    Parameters
+    ----------
+    array : np.array
+        array of numbers you want to find streaks in
+
+    Returns
+    -------
+    numpy array. when a new value is found vs previous, the value of x is 1.
+    
+    It increases incrementally with each repeated number to count how many values have the same value as the previous
+
+    '''
+    
+    x = np.zeros(array.size).astype(int)
+    count = 0
+    for ind in range(len(x)):
+        if array[ind] == array[ind-1]:
+            count += 1 #continuing the sequence
+        else: #changed
+            count = 1
+        x[ind] = count
+    
+    return x
+
+def get_difficulty_sequences(subdat):
+    '''
+    
+
+    Parameters
+    ----------
+    subdat : pandas dataframe
+        dataframe containing participant behaviour. must contain column called `blocknumber` to separate blocks, and `trialdifficulty` to know difficulty on each trial of the task
+
+    Returns
+    -------
+    pandas dataframe
+        contains two new columns:
+            sinceDifficultySwitch - number of trials since the difficulty changed
+            untilDifficultySwitch - how many trials are left until the difficulty will change
+
+    '''
+    
+    data = subdat.copy()
+    nruns = data.blocknumber.unique().size #get how many task blocks, as difficulty starts fresh each block
+    df = pd.DataFrame() #make a new dataframe to append to, and return at the end
+    
+    for run in np.add(range(nruns),1): #loop over blocks
+        rundat = data.copy().query('blocknumber == @run') #get data for this block
+        
+        #getting streaks in difficulty sequence
+        streaks1 = streaks_numbers(rundat.trialdifficulty.to_numpy()) #trials since difficulty changed
+        streaks2 = np.flip(streaks_numbers(np.flip(rundat.trialdifficulty.to_numpy()))) #trials until difficulty changes
+        rundat = rundat.assign(
+            sinceDifficultySwitch = streaks1,
+            untilDifficultySwitch = streaks2)
+        df = pd.concat([df, rundat])
+    
+    return df
+        
+def clusterperm_test(data, labels, of_interest, times, tmin = None, tmax = None, out_type = 'indices', n_permutations = 'Default', tail = 0, threshold = None, n_jobs = 2):
+    '''
+    function to run permutation tests on a time-series (eg. alpha timecourse).
+    
+    Inputs:
+        data            - the data array of interest (e.g. betas/copes/tstats)
+        labels          - the labels (names) of regressors/copes/tstats. length of this should match an axis
+        of_interest     - the regressor/contrast of interest
+        times           - array showing time labels for each data point (useful if wanting to crop bits)
+        tmin, tmax      - timewindow for period to run cluster test over (if not whole signal)
+        out_type        - specify output type. defaults to indices, can set to mask if you really want
+        tail            - specify whether you want to do one tailed or two tailed. 0 = two-tailed, 1/-1 = one-tailed
+        threshold       - cluster forming threshold. Default = None (t-threshold chosen by mne). can specify a float, where data values more extreme than this threshold will be used to form clusters
+    
+    '''
+    import scipy as sp
+    from scipy import ndimage
+    from copy import deepcopy
+    
+    iid = np.where(labels == of_interest)[0] #get location of the regressor/cope we want
+    dat = np.squeeze(data.copy()[:,iid,:])
+    nsubs = len(dat)
+    
+    #set defaults assuming no restriction of cluster timewindow
+    twin_minid = 0 #first timepoint
+    twin_maxid = None #last timepoint
+    if tmin != None or tmax != None: #some specified time window
+        if tmin != None: #get onset of time window
+            twin_minid = np.where(times == tmin)[0][0]
+        elif tmin == None:
+            twin_minid = times.min()
+            
+        if tmax != None: #get offset of time window
+            twin_maxid = np.where(times == tmax)[0][0]
+        elif tmax == None:
+            twin_maxid = times.max()
+    
+    if twin_maxid != None:
+        twin_times = times[twin_minid:twin_maxid + 1]
+        data_twin  = dat.copy()[:, twin_minid:twin_maxid + 1]
+    else:
+        twin_times = times[twin_minid:]
+        data_twin  = dat.copy()[:, twin_minid:]
+    
+    if n_permutations != 'Default':
+        t, clusters, cluster_pv, H0 = mne.stats.permutation_cluster_1samp_test(data_twin, out_type=out_type, n_permutations = n_permutations, tail = tail, n_jobs = n_jobs)
+    else:
+        t, clusters, cluster_pv, H0 = mne.stats.permutation_cluster_1samp_test(data_twin, out_type=out_type, tail = tail, n_jobs = n_jobs)
+    
+    return t, clusters, cluster_pv, H0
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
