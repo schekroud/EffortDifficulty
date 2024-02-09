@@ -107,6 +107,72 @@ def parse_eye_data(eye_fname, block_rec, trial_rec, nblocks, ntrials = None, bin
     return d #return the parsed data
 
 
+# def _parse_eyedata_blockwise(eye_fname, nblocks, binocular):
+#     d = open(eye_fname, 'r')
+#     raw_d = d.readlines()
+#     d.close()
+
+#     split_d = []
+#     for i in range(len(raw_d)):
+#         tmp = raw_d[i].split()
+#         split_d.append(tmp)
+        
+#     if binocular:
+#         start_inds = [x for x in range(len(split_d)) if len(split_d[x]) == 6 and split_d[x][0] == 'START']
+#     else:
+#         start_inds = [x for x in range(len(split_d)) if len(split_d[x]) == 5 and split_d[x][0] == 'START']
+#     if len(start_inds) != nblocks:
+#         raise DataError('%d blocks are found in the data, not %d as has been input in nblocks' %(len(start_inds),nblocks))
+
+#     #get points where recording stopped
+#     end_inds   = [x for x in range(len(split_d)) if len(split_d[x]) == 7 and split_d[x][0] == 'END']
+
+#     if len(start_inds) != len(end_inds):
+#         raise DataError('the number of times the recording was started and stopped does not align. check problems with acquisition')
+    
+#     #gather start/ends of blocks together
+#     nstarts = len(start_inds)
+#     blockranges = []
+#     for x in range(nstarts):
+#         blockranges.append(tuple([start_inds[x], end_inds[x]]))
+        
+#     for iblock in range(nstarts):
+#         start, end = blockranges[iblock]
+#         tmpdata = split_d[start:end+1]
+#         tmpdata = tmpdata[6:]
+#         tmpdata = [x for x in tmpdata if ]
+
+        # #get lines only with info for this block{
+        # iblk = [split_d[x] for x in mask if split_d[x][0] not in
+        #         ['START', 'PRESCALER', 'VPRESCALER', 'PUPIL', 'EVENTS', 'SAMPLES', 'END', 'EFIX', 'SFIX', 'ESACC', 'SSACC', 'EBLINK', 'SBLINK', 'INPUT']]
+        
+        # iblk = iblk[1:]
+        
+        # messages = [x for x in iblk if x[0] == 'MSG']
+        # iblk = [x for x in iblk if x[0] != 'MSG']
+        
+        # triggers = OrderedDict()
+        # messages = np.array(messages)
+        # iblk = np.array(iblk)
+        # fsamp = float(iblk[0][0])
+        
+        # times = iblk[:,0].astype(float)
+        # xpos  = iblk[:,1] #missing data is coded as '.'
+        # ypos  = iblk[:,2] #missing data is coded as '.'
+        # pupil = iblk[:,3].astype(float)
+        
+        # xpos[xpos=='.'] = np.nan
+        
+        # for x in range(len(messages)):
+        #     triggers[x]
+        
+        # triggers.onset = messages[:,1].astype(float)
+        # triggers.description = messages[:,2]}
+        
+        
+        
+
+
 def _parse_eye_data_blockwise(eye_fname, nblocks, binocular):
     """
     this function is called by parse_eye_data and will operate on data where
@@ -158,8 +224,13 @@ def _parse_eye_data_blockwise(eye_fname, nblocks, binocular):
 
         start_line = start_inds[istart]
         end_line   = end_inds[istart]
-
-        iblk = np.array(split_d[start_line:end_line]) #get only lines with info for this block
+        mask = np.zeros(len(split_d), dtype=bool)
+        mask[start_line:end_line+1] = True
+        mask = np.squeeze(np.where(mask))
+        
+        iblk = [split_d[x] for x in mask if split_d[x][0] != 'END'] #get only lines with info for this block
+        
+        iblk = np.array(iblk, dtype = object) #get only lines with info for this block
 
         iblk_event_inds, iblk_events     = [], []
         iblk_blink_inds, iblk_blink      = [], []
@@ -224,7 +295,7 @@ def _parse_eye_data_blockwise(eye_fname, nblocks, binocular):
                 missing_inds = np.where(iblk_data[:,col] == '.') #missing data is stored as '.' and needs nanning to be able to convert to float
                 for i in missing_inds:
                     iblk_data[i, col] = np.NaN
-        iblk_data = iblk_data.astype(np.float) # convert data from string to floats for computations
+        iblk_data = iblk_data.astype(float) # convert data from string to floats for computations
 
         #for binocular data, the shape is:
         # columns: time stamp, left x, left y, left pupil, right x, right y, right pupil
@@ -816,7 +887,7 @@ def remove_before_task_start(data, snip_amount = 1.5, srate = 1000):
 #smoothed_signal = np.convolve(boxcar/boxcar.sum(), signal, move = 'same')
 
 
-def cleanblinks_usingpupil(data, nblocks, signals_to_clean = ['x', 'y'], eyes = ['left', 'right']):
+def cleanblinks_usingpupil(data, nblocks, buffer = 0.150, sfreq = 1000, signals_to_clean = ['x', 'y'], eyes = ['left', 'right']):
 
     '''
     function to detect blinks in the data using the pupil trace rather than gaze coordinates
@@ -828,10 +899,10 @@ def cleanblinks_usingpupil(data, nblocks, signals_to_clean = ['x', 'y'], eyes = 
     '''
     binocular = data[0]['binocular']
     
-    blinkspd        = 2.5                                   #speed above which data is remove around nan periods -- threshold
+    blinkspd        = 2.5                 #speed above which data is remove around nan periods -- threshold
     maxvelthresh    = 30
     maxpupilsize    = 20000
-    cleanms         = 100                                    #ms padding around the blink edges for removal
+    cleanms         = buffer * sfreq      #ms padding around the blink edges for removal
     if binocular:
         traces_to_scan  = ['lp', 'lx', 'ly', 'rp', 'rx', 'ry']  #the namings of possible traces
     elif not binocular:
@@ -867,48 +938,52 @@ def cleanblinks_usingpupil(data, nblocks, signals_to_clean = ['x', 'y'], eyes = 
                 speed       = np.abs(vel)                                   #absolute velocity
                 smoothv     = smooth(vel,   twin = 8, method = 'boxcar')    #apply some smoothing to the velocity signal to remove tremor in signal
                 smoothspd   = smooth(speed, twin = 8, method = 'boxcar')    #apply some smoothing to the speed (absolute of derivative of the trace)
-    
-                #find bad samples determined by breaching max vel threshold, and nan them
-                badsamples = np.squeeze(np.where(np.logical_or(speed >= maxvelthresh, signal[1:] > maxpupilsize)))
-                signal[badsamples] = np.nan
-    
-                #going to loop over each sample (possibly slow..) to remove short segments of data surrounded by nans
-                lastnan = 0; lastwasfast = False
-                for i in range(len(signal)):
-                    if np.isnan(signal[i]):
-                        if np.logical_and((i-lastnan) < cleanms, i-lastnan > 0):
-                            signal[lastnan:i] = np.nan
-                        lastnan = i; lastwasfast = False
-    
-                        m = 1
-                        while ( i-m>0 and ~np.isnan(signal[i-m]) and ( smoothspd[i-m] > blinkspd or (i-m-1>0 and smoothspd[i-m-1]>blinkspd) or (i-m-2 > 0 and smoothspd[i-m-2]>blinkspd))):
-                            signal[i-m] = np.nan
-                            m+=1
-                    else:
-                        if i < len(smoothspd): #can't index beyond the last sample of the pupil speedd
-                            if (((i-lastnan == 1) or lastwasfast == True) and (smoothspd[i]>blinkspd or (i+1<len(signal) and smoothspd[i+1]>blinkspd) or (i+2<len(signal) and smoothspd[i+2]>blinkspd))):
-                                signal[i] = np.nan
-                                lastwasfast = True
-                        if i == len(smoothspd): #last possible value of the pupil change speed
-                            if i-lastnan == 1 or lastwasfast == True:
-                                signal[i:i+1] = np.nan
-                        else:
-                            lastwasfast = False
-    
-                #get the points of the signal that are bad in the pupil, and nan the appropriate points in the traces that are to be cleaned too (for consistency)
-                blanks = np.squeeze(np.where(np.isnan(signal))) #get the nan periods of the data after these cleaning processes
+                
+                #pupil diam shouldn't really reach zero, this is missing data, so set a check))
+                zerosamples = np.zeros_like(signal, dtype=bool)
+                zerosamples[pupil==0] = True
+                
+                badsamples = np.zeros_like(signal, dtype=bool)
+                badsamples[1:] = np.logical_or(speed >= maxvelthresh, signal[1:] > maxpupilsize)
+                
+                #if you smooth with a boxcar of width your buffer, it spreads the 1s (marker of bad sample) to the buffer period around (1/buffer width)
+                #if you then just check for greater than zero, this gets all samples within the contaminated window 
+                badsamples = np.greater(smooth(badsamples.astype(float), twin = int(cleanms), method='boxcar'), 0).astype(bool)
+                badsamps = (badsamples | zerosamples) #get all bad samples before we find 'blink' periods that need interpolating
+                badsampinds = np.squeeze(np.where(badsamps)) #get this info as indices
+                
+                signal[badsamps==1] = np.nan #set bad samples or zero samples to nan, this does a lot of preproc
+                # plt.figure(); plt.plot(pupil, label='raw', color='b'); plt.plot(signal, label='preproc', color='r'); plt.legend(loc='lower left')
+
+                changebads = np.zeros_like(signal, dtype=int)
+                changebads[1:] = np.diff(badsamps.astype(int)) #+1 = from not missing -> missing; -1 = missing -> not missing
+                
+                #starts are always off by one sample - when changebads == 1, the data is now MISSING. we need the sample before for interpolation
+                starts = np.squeeze(np.where(changebads==1)) -1
+                ends = np.squeeze(np.where(changebads==-1))
+                
+                if starts.size != ends.size:
+                    print(f"There is a problem with your data and the start/end of blinks dont match.\n- There are {starts.size} blink starts and {ends.size} blink ends")
+                if starts.size == ends.size - 1:
+                    print('The recording starts on a blink; fixing')
+                    starts = np.insert(starts, 0, 0, 0)
+                if starts.size == ends.size + 1:
+                    print('The recording ends on a blink; fixing')
+                    ends = np.append(ends, len(pupil))
+                
+                #nan the appropriate parts of the signals
                 if eye == 'left':
                     for trace in signals_to_clean:
                         traceid = 'l'+trace
-                        traces[traceid][blanks] = np.nan #set these points to nan
+                        traces[traceid][badsampinds] = np.nan #set to nan
                     traces['lp'] = signal
-                    badsamps['left'] = blanks
+                    badsamps['left'] = badsamps
                 if eye == 'right':
                     for trace in signals_to_clean:
                         traceid = 'r'+trace
-                        traces[traceid][blanks] = np.nan #set these points to nan
+                        traces[traceid][badsampinds] = np.nan #set to nan
                     traces['rp'] = signal
-                    badsamps['right'] = blanks
+                    badsamps['right'] = badsamps
         elif not binocular:
             #same process basically, but just doing it once (cba making a function that does this elegantly, or subfunctions right now)
             signal = deepcopy(block['p']) #get pupil data
@@ -917,45 +992,35 @@ def cleanblinks_usingpupil(data, nblocks, signals_to_clean = ['x', 'y'], eyes = 
             speed       = np.abs(vel)                                   #absolute velocity
             smoothv     = smooth(vel,   twin = 8, method = 'boxcar')    #apply some smoothing to the velocity signal to remove tremor in signal
             smoothspd   = smooth(speed, twin = 8, method = 'boxcar')    #apply some smoothing to the speed (absolute of derivative of the trace)
-
-            #find bad samples determined by breaching max vel threshold, and nan them
-            badsamples = np.squeeze(np.where(np.logical_or(speed >= maxvelthresh, signal[1:] > maxpupilsize)))
-            signal[badsamples] = np.nan
-
-            #going to loop over each sample (possibly slow..) to remove short segments of data surrounded by nans
-            lastnan = 0; lastwasfast = False
-            for i in range(len(signal)):
-                if np.isnan(signal[i]):
-                    if np.logical_and((i-lastnan) < cleanms, i-lastnan > 0):
-                        signal[lastnan:i] = np.nan
-                    lastnan = i; lastwasfast = False
-
-                    m = 1
-                    while ( i-m>0 and ~np.isnan(signal[i-m]) and ( smoothspd[i-m] > blinkspd or (i-m-1>0 and smoothspd[i-m-1]>blinkspd) or (i-m-2 > 0 and smoothspd[i-m-2]>blinkspd))):
-                        signal[i-m] = np.nan
-                        m+=1
-                else:
-                    if i < len(smoothspd): #can't index beyond the last sample of the pupil speedd
-                        if (((i-lastnan == 1) or lastwasfast == True) and (smoothspd[i]>blinkspd or (i+1<len(signal) and smoothspd[i+1]>blinkspd) or (i+2<len(signal) and smoothspd[i+2]>blinkspd))):
-                            signal[i] = np.nan
-                            lastwasfast = True
-                    if i == len(smoothspd): #last possible value of the pupil change speed
-                        if i-lastnan == 1 or lastwasfast == True:
-                            signal[i:i+1] = np.nan
-                    else:
-                        lastwasfast = False
-            #this has nan'd bad periods (where the rate of change is high)
-            #leaves some data as 0 -- where there was no pupil it doesnt nan it in the recording, it saves a zero
-            #just replace these
-            signal = np.where(signal == 0, np.nan, signal)
             
+            #pupil diam shouldn't really reach zero, this is missing data, so set a check))
+            zerosamples = np.zeros_like(signal, dtype=bool)
+            zerosamples[signal==0] = True
             
-            #get the points of the signal that are bad in the pupil, and nan the appropriate points in the traces that are to be cleaned too (for consistency)
-            blanks = np.squeeze(np.where(np.isnan(signal))) #get the nan periods of the data after these cleaning processes
+            badsamples = np.zeros_like(signal, dtype=bool)
+            badsamples[1:] = np.logical_or(speed >= maxvelthresh, signal[1:] > maxpupilsize)
+            
+            #if you smooth with a boxcar of width your buffer, it spreads the 1s (marker of bad sample) to the buffer period around (1/buffer width)
+            #if you then just check for greater than zero, this gets all samples within the contaminated window 
+            badsamples = np.greater(smooth(badsamples.astype(float), twin = int(cleanms), method='boxcar'), 0).astype(bool)
+            badsamps = (badsamples | zerosamples) #get all bad samples before we find 'blink' periods that need interpolating
+            badsampinds = np.squeeze(np.where(badsamps)) #get this info as indices
+            
+            signal[badsamps==1] = np.nan #set bad samples or zero samples to nan, this does a lot of preproc
+            # plt.figure(); plt.plot(pupil, label='raw', color='b'); plt.plot(signal, label='preproc', color='r'); plt.legend(loc='lower left')
+
+            changebads = np.zeros_like(signal, dtype=int)
+            changebads[1:] = np.diff(badsamps.astype(int)) #+1 = from not missing -> missing; -1 = missing -> not missing
+            
+            #starts are always off by one sample - when changebads == 1, the data is now MISSING. we need the sample before for interpolation
+            starts = np.squeeze(np.where(changebads==1)) -1
+            ends = np.squeeze(np.where(changebads==-1))
+            
+            #nan appropriate parts of the signals
             for trace in traces_to_scan:
-                traces[trace][blanks] = np.nan #set the blank periods to nan in the data
+                traces[trace][badsampinds] = np.nan #set to nan
             traces['p'] = signal
-            badsamps = blanks
+            badsamps = badsamps
             
         for key in traces.keys():
             block[key] = traces[key]
