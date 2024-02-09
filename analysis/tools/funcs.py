@@ -22,8 +22,8 @@ def getSubjectInfo(subject, ):
         param['path']   = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/data'
         wd              = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty'
     elif subject['loc'] == 'laptop': 
-        param['path']   = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/data'
-        wd              = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
+        param['path']   = '/Users/sammichekroud/Desktop/postdoc/student_projects/EffortDifficulty/data'
+        wd              = '/Users/sammichekroud/Desktop/postdoc/student_projects/EffortDifficulty'
     elif subject['loc'] == 'pc':
         param['path']   = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/data'
         wd              = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
@@ -33,14 +33,21 @@ def getSubjectInfo(subject, ):
     eegpath = path[:-5] #remove /data  from pathstring 
     
     param['subid']          = substr 
+<<<<<<< HEAD
+=======
     # param['behaviour']      = op.join(path, 'datafiles', 'EffortDifficulty_s%02d_combined.csv'%subject['id']) #behavioural data file
+>>>>>>> b415f22423f373219f3b6d62ba3848c5fcc09a27
     param['behaviour']      = op.join(path, 'datafiles', 'combined', 'EffortDifficulty_s%02d_combined_py.csv'%subject['id']) #behavioural data file
     param['raweeg']         = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d.dat'%subject['id']) # raw eeg data
     param['eeg_preproc']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_preproc-raw.fif'%subject['id']) #preprocessed data
-    param['asc']            = op.join(path, 'eyes', 'asc', 'EffDS%02da.asc'%subject['id'])
     param['raweyes']        = op.join(path, 'eyes', 'raw', 'EffDS%02d_raw.pickle'%subject['id'])
     param['preproceyes']    = op.join(path, 'eyes', 'preprocessed', 'EffDS%02d_preproc.pickle'%subject['id'])
-    
+
+    param['asc']            = op.join(path, 'eyes', 'asc', 'EffDS%02da.asc'%subject['id'])
+    param['eyes_preproc']   = op.join(path, 'eyes', 'preprocessed', 'EffDS%02da_preprocessed-raw.fif'%subject['id'])
+    param['s1locked_eyes']  = op.join(path, 'eyes', 'stim1locked', 'EffDS%02da_stim1locked-epo.fif'%subject['id'])   
+    param['plrlocked']      = op.join(path, 'eyes', 'stim1locked', 'EffDS%02da_plrlocked-epo.fif'%subject['id'])   
+    param['fblocked_eyes']  = op.join(path, 'eyes', 'fblocked', 'EffDS%02da_fblocked-epo.fif'%subject['id'])   
     #paths to save other eeg objects
     param['stim1locked']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_stim1locked-epo.fif'%subject['id'])
     param['stim2locked']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_stim2locked-epo.fif'%subject['id'])
