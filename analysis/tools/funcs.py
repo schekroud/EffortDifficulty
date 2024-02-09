@@ -11,6 +11,8 @@ import scipy as sp
 from copy import deepcopy
 import pandas as pd
 from matplotlib import pyplot as plt
+import mne
+
 
 def getSubjectInfo(subject, ):
     
@@ -355,7 +357,56 @@ def get_difficulty_sequences(subdat):
     
     return df
         
-        
+def clusterperm_test(data, labels, of_interest, times, tmin = None, tmax = None, out_type = 'indices', n_permutations = 'Default', tail = 0, threshold = None, n_jobs = 2):
+    '''
+    function to run permutation tests on a time-series (eg. alpha timecourse).
+    
+    Inputs:
+        data            - the data array of interest (e.g. betas/copes/tstats)
+        labels          - the labels (names) of regressors/copes/tstats. length of this should match an axis
+        of_interest     - the regressor/contrast of interest
+        times           - array showing time labels for each data point (useful if wanting to crop bits)
+        tmin, tmax      - timewindow for period to run cluster test over (if not whole signal)
+        out_type        - specify output type. defaults to indices, can set to mask if you really want
+        tail            - specify whether you want to do one tailed or two tailed. 0 = two-tailed, 1/-1 = one-tailed
+        threshold       - cluster forming threshold. Default = None (t-threshold chosen by mne). can specify a float, where data values more extreme than this threshold will be used to form clusters
+    
+    '''
+    import scipy as sp
+    from scipy import ndimage
+    from copy import deepcopy
+    
+    iid = np.where(labels == of_interest)[0] #get location of the regressor/cope we want
+    dat = np.squeeze(data.copy()[:,iid,:])
+    nsubs = len(dat)
+    
+    #set defaults assuming no restriction of cluster timewindow
+    twin_minid = 0 #first timepoint
+    twin_maxid = None #last timepoint
+    if tmin != None or tmax != None: #some specified time window
+        if tmin != None: #get onset of time window
+            twin_minid = np.where(times == tmin)[0][0]
+        elif tmin == None:
+            twin_minid = times.min()
+            
+        if tmax != None: #get offset of time window
+            twin_maxid = np.where(times == tmax)[0][0]
+        elif tmax == None:
+            twin_maxid = times.max()
+    
+    if twin_maxid != None:
+        twin_times = times[twin_minid:twin_maxid + 1]
+        data_twin  = dat.copy()[:, twin_minid:twin_maxid + 1]
+    else:
+        twin_times = times[twin_minid:]
+        data_twin  = dat.copy()[:, twin_minid:]
+    
+    if n_permutations != 'Default':
+        t, clusters, cluster_pv, H0 = mne.stats.permutation_cluster_1samp_test(data_twin, out_type=out_type, n_permutations = n_permutations, tail = tail, n_jobs = n_jobs)
+    else:
+        t, clusters, cluster_pv, H0 = mne.stats.permutation_cluster_1samp_test(data_twin, out_type=out_type, tail = tail, n_jobs = n_jobs)
+    
+    return t, clusters, cluster_pv, H0
         
         
         
