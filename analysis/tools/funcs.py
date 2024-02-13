@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt
 import mne
 
 
-def getSubjectInfo(subject, ):
+def getSubjectInfo(subject):
     
     param = {}
     
@@ -33,10 +33,7 @@ def getSubjectInfo(subject, ):
     eegpath = path[:-5] #remove /data  from pathstring 
     
     param['subid']          = substr 
-<<<<<<< HEAD
-=======
     # param['behaviour']      = op.join(path, 'datafiles', 'EffortDifficulty_s%02d_combined.csv'%subject['id']) #behavioural data file
->>>>>>> b415f22423f373219f3b6d62ba3848c5fcc09a27
     param['behaviour']      = op.join(path, 'datafiles', 'combined', 'EffortDifficulty_s%02d_combined_py.csv'%subject['id']) #behavioural data file
     param['raweeg']         = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d.dat'%subject['id']) # raw eeg data
     param['eeg_preproc']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_preproc-raw.fif'%subject['id']) #preprocessed data
@@ -329,6 +326,9 @@ def streaks_numbers(array):
     
     return x
 
+def gauss_smooth(array, sigma = 2):
+    return sp.ndimage.gaussian_filter1d(array, sigma = sigma, axis=1) #smooths across time, given a 2d array of trials x time
+
 def get_difficulty_sequences(subdat):
     '''
     
@@ -409,13 +409,13 @@ def clusterperm_test(data, labels, of_interest, times, tmin = None, tmax = None,
         data_twin  = dat.copy()[:, twin_minid:]
     
     if n_permutations != 'Default':
-        t, clusters, cluster_pv, H0 = mne.stats.permutation_cluster_1samp_test(data_twin, out_type=out_type, n_permutations = n_permutations, tail = tail, n_jobs = n_jobs)
+        t, clusters, cluster_pv, H0 = mne.stats.permutation_cluster_1samp_test(data_twin, out_type=out_type, n_permutations = n_permutations, tail = tail, threshold = threshold, n_jobs = n_jobs)
     else:
-        t, clusters, cluster_pv, H0 = mne.stats.permutation_cluster_1samp_test(data_twin, out_type=out_type, tail = tail, n_jobs = n_jobs)
+        t, clusters, cluster_pv, H0 = mne.stats.permutation_cluster_1samp_test(data_twin, out_type=out_type, tail = tail, threshold = threshold, n_jobs = n_jobs)
     
     return t, clusters, cluster_pv, H0
         
-        
+
         
         
         
