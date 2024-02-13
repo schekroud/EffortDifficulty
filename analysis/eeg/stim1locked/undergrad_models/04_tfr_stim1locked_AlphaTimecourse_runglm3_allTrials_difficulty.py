@@ -18,7 +18,7 @@ import seaborn as sns
 %matplotlib
 
 sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-from funcs import getSubjectInfo, gesd, plot_AR
+from funcs import getSubjectInfo, gauss_smooth
 
 wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 os.chdir(wd)
@@ -27,7 +27,7 @@ import glmtools as glm
 subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,    38, 39])
 #drop 36 & 37 as unusable and withdrew from task
 glms2run = 1 #1 with no baseline, one where tfr input data is baselined
-smooth = False #if smoothing single trial alpha timecourse
+smooth = True #if smoothing single trial alpha timecourse
 transform = False #if converting power to decibels (10*log10 power)
 glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', 'undergrad_models', 'glm3')
 if not op.exists(glmdir):
@@ -106,6 +106,14 @@ for i in subs:
                                         )
     
         glmdes = DC.design_from_datainfo(glmdata.info)
+        
+        if i == 10: #plot example of the design matrix
+            fig = plt.figure(figsize = [5,4])
+            ax = fig.add_subplot(111)
+            ax.imshow(glmdes.design_matrix, aspect= 'auto', vmin = -2, vmax = 2, cmap = 'RdBu_r', interpolation = None)
+            ax.set_xticks(range(glmdes.design_matrix.shape[1]), labels = glmdes.regressor_names)
+            ax.set_ylabel('trial number')
+            fig.savefig(op.join(glmdir, 'example_designmatrix.pdf'), format = 'pdf', dpi = 300)
         
         # glmdes.plot_summary(summary_lines=False)
         # glmdes.plot_efficiency()

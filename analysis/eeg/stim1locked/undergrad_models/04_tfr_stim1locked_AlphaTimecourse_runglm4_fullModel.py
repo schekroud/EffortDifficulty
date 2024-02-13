@@ -18,7 +18,7 @@ import seaborn as sns
 %matplotlib
 
 sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-from funcs import getSubjectInfo, gesd, plot_AR
+from funcs import getSubjectInfo, gauss_smooth
 
 wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 os.chdir(wd)
@@ -28,12 +28,10 @@ subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
 #drop 36 & 37 as unusable and withdrew from task
 
 # subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,     22, 23, 24,     26, 27, 28,         31, 32, 33, 34, 35,        39]) #subjects from eyetracking analysis oo
-
-
-glms2run = 1 #1 with no baseline, one where tfr input data is baselined
-smooth = False #if smoothing single trial alpha timecourse
-transform = False #if converting power to decibels (10*log10 power)
-glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', 'undergrad_models', 'glm4')
+glms2run    = 1 #1 with no baseline, one where tfr input data is baselined
+smooth      = True #if smoothing single trial alpha timecourse
+transform   = False #if converting power to decibels (10*log10 power)
+glmdir      = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', 'undergrad_models', 'glm4')
 if not op.exists(glmdir):
     os.mkdir(glmdir)
 
@@ -52,7 +50,6 @@ for i in subs:
         tmpdf2 = tfr.metadata.copy().reset_index(drop=True)
         tmpdf2 = tmpdf2.assign(trlidz = tmpdf.trlid_z)
         tfr.metadata = tmpdf2
-        
         
         #comes with metadata attached            
         tfr = tfr['fbtrig != 62'] #drop timeout trials
@@ -169,6 +166,17 @@ for i in subs:
                                         d12prevcorrectness = d12prevcorrectness,
                                         trialnum = trialnum)
         glmdes = DC.design_from_datainfo(glmdata.info)
+        
+        if i == 10: #plot example of the design matrix
+            fig = plt.figure(figsize = [8,6])
+            ax = fig.add_subplot(111)
+            ax.imshow(glmdes.design_matrix, aspect= 'auto', vmin = -2, vmax = 2, cmap = 'RdBu_r', interpolation = None)
+            ax.set_xticks(range(glmdes.design_matrix.shape[1]), labels = glmdes.regressor_names, rotation = 45)
+            ax.set_ylabel('trial number')
+            fig.tight_layout()
+            fig.savefig(op.join(glmdir, 'example_designmatrix.pdf'), format = 'pdf', dpi = 300)
+            plt.close()
+            
         # glmdes.plot_summary(summary_lines=True)
         # glmdes.plot_efficiency()
         
@@ -179,9 +187,9 @@ for i in subs:
         copes = model.copes.copy()
         tstats = model.tstats.copy()
         
-        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_betas_.npy'), arr = betas)
-        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_copes_.npy'), arr = copes)
-        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_tstats_.npy'), arr = tstats)
+        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_betas.npy'), arr = betas)
+        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_copes.npy'), arr = copes)
+        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_tstats.npy'), arr = tstats)
         
         times = tfr.times
         freqs = tfr.freqs

@@ -152,6 +152,16 @@ for i in subs:
                                         easyprevcorrectness = easyprevcorrectness,
                                         trialnum = trialnum)
         glmdes = DC.design_from_datainfo(glmdata.info)
+        
+        if i == 10: #plot example of the design matrix
+            fig = plt.figure(figsize = [8,6])
+            ax = fig.add_subplot(111)
+            ax.imshow(glmdes.design_matrix, aspect= 'auto', vmin = -2, vmax = 2, cmap = 'RdBu_r', interpolation = None)
+            ax.set_xticks(range(glmdes.design_matrix.shape[1]), labels = glmdes.regressor_names, rotation = 45)
+            ax.set_ylabel('trial number')
+            fig.tight_layout()
+            fig.savefig(op.join(glmdir, 'example_designmatrix.pdf'), format = 'pdf', dpi = 300)
+            
         # glmdes.plot_summary(summary_lines=True)
         # glmdes.plot_efficiency()
         

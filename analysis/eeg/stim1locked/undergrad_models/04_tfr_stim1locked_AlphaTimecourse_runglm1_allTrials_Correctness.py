@@ -18,7 +18,7 @@ import seaborn as sns
 %matplotlib
 
 sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-from funcs import getSubjectInfo, gesd, plot_AR
+from funcs import getSubjectInfo, gauss_smooth
 
 wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 os.chdir(wd)
@@ -26,15 +26,14 @@ import glmtools as glm
 
 subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,    38, 39])
 #drop 36 & 37 as unusable and withdrew from task
-glms2run = 1 #1 with no baseline, one where tfr input data is baselined
-smooth = False #if smoothing single trial alpha timecourse
+smooth    = True #if smoothing single trial alpha timecourse
 transform = False #if converting power to decibels (10*log10 power)
 glmdir = op.join(wd, 'glms', 'stim1locked', 'alpha_timecourses', 'undergrad_models', 'glm1')
 if not op.exists(glmdir):
     os.mkdir(glmdir)
 
 for i in subs:
-    for iglm in [1]: #controls whether glm is run on un-baselined or baselined data
+    for iglm in [0, 1]: #controls whether glm is run with or without difficulty 2 data
         print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
         sub   = dict(loc = 'workstation', id = i)
         param = getSubjectInfo(sub)
@@ -62,10 +61,10 @@ for i in subs:
         
         if iglm == 0:
             addtopath = ''
-            baseline_input = False
         elif iglm == 1:
-            addtopath = '_baselined'
-            baseline_input = True
+            addtopath = '_nodiff2'
+            tfr = tfr['difficultyOri != 2']
+        baseline_input = True
            
         posterior_channels = ['PO7', 'PO3', 'O1', 'O2', 'PO4', 'PO8', 'Oz', 'POz']
         
@@ -73,11 +72,13 @@ for i in subs:
         if baseline_input:
             bline = (None, None)
             bline = (-2.7, -2.4) #baseline period for stim1locked
+            # bline = (-0.8, -0.3) #baseline just pre-stim to look at induced effects only (dont care about pre-stim alpha effects)
         elif not baseline_input:
             bline = None
         tfrdat = tfr.copy().apply_baseline(baseline = bline).pick_channels(posterior_channels).data.copy()
         tfrdat = np.mean(tfrdat, axis = 2) #average across the frequency band, results in trials x channels x time
         tfrdat = np.mean(tfrdat, axis = 1) #average across channels now, returns trials x time
+        
         if smooth:
             tfrdat = gauss_smooth(tfrdat, sigma = 2)
         if transform:
@@ -102,22 +103,25 @@ for i in subs:
                                         correctness = acc,
                                         trialnum = trialnum
                                         )
-    
         glmdes = DC.design_from_datainfo(glmdata.info)
         
-        # glmdes.plot_summary(summary_lines=False)
-        # glmdes.plot_efficiency()
-        
+        if i == 10: #plot example of the design matrix
+            fig = plt.figure(figsize = [5,4])
+            ax = fig.add_subplot(111)
+            ax.imshow(glmdes.design_matrix, aspect= 'auto', vmin = -2, vmax = 2, cmap = 'RdBu_r', interpolation = None)
+            ax.set_xticks(range(glmdes.design_matrix.shape[1]), labels = glmdes.regressor_names)
+            ax.set_ylabel('trial number')
+            fig.savefig(op.join(glmdir, 'example_designmatrix%s.pdf'%addtopath), format = 'pdf', dpi = 300)
+            plt.close()
         print('\n - - - - -  running glm - - - - - \n')
         model = glm.fit.OLSModel(glmdes, glmdata) #fit the actual model 
-            
         betas = model.betas.copy()
         copes = model.copes.copy()
         tstats = model.tstats.copy()
         
-        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_betas.npy'), arr = betas)
-        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_copes.npy'), arr = copes)
-        np.save(file = op.join(glmdir, param['subid'] + '_stim1lockedTFR_tstats.npy'), arr = tstats)
+        np.save(file = op.join(glmdir, param['subid'] + f'_stim1lockedTFR_betas{addtopath}.npy'), arr = betas)
+        np.save(file = op.join(glmdir, param['subid'] + f'_stim1lockedTFR_copes{addtopath}.npy'), arr = copes)
+        np.save(file = op.join(glmdir, param['subid'] + f'_stim1lockedTFR_tstats{addtopath}.npy'), arr = tstats)
         
         times = tfr.times
         freqs = tfr.freqs
@@ -131,9 +135,6 @@ for i in subs:
         # if baseline_input:
         #     ax.axvspan(xmin = bline[0], xmax = bline[1], color = '#bdbdbd', lw = 0, edgecolor = None, alpha = 0.3)
         # fig.legend()
-    
-    
-    
     if i == 10: #for first subject, lets also save a couple things for this glm to help with visualising stuff
         #going to save the times
         np.save(file = op.join(glmdir, 'glm_timerange.npy'), arr= times)
