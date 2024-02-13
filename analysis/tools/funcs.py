@@ -33,10 +33,7 @@ def getSubjectInfo(subject, ):
     eegpath = path[:-5] #remove /data  from pathstring 
     
     param['subid']          = substr 
-<<<<<<< HEAD
-=======
     # param['behaviour']      = op.join(path, 'datafiles', 'EffortDifficulty_s%02d_combined.csv'%subject['id']) #behavioural data file
->>>>>>> b415f22423f373219f3b6d62ba3848c5fcc09a27
     param['behaviour']      = op.join(path, 'datafiles', 'combined', 'EffortDifficulty_s%02d_combined_py.csv'%subject['id']) #behavioural data file
     param['raweeg']         = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d.dat'%subject['id']) # raw eeg data
     param['eeg_preproc']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_preproc-raw.fif'%subject['id']) #preprocessed data
@@ -48,6 +45,7 @@ def getSubjectInfo(subject, ):
     param['s1locked_eyes']  = op.join(path, 'eyes', 'stim1locked', 'EffDS%02da_stim1locked-epo.fif'%subject['id'])   
     param['plrlocked']      = op.join(path, 'eyes', 'stim1locked', 'EffDS%02da_plrlocked-epo.fif'%subject['id'])   
     param['fblocked_eyes']  = op.join(path, 'eyes', 'fblocked', 'EffDS%02da_fblocked-epo.fif'%subject['id'])   
+    param['s2locked_eyes']  = op.join(path, 'eyes', 'stim2locked', 'EffDS%02da_stim2locked-epo.fif'%subject['id'])   
     #paths to save other eeg objects
     param['stim1locked']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_stim1locked-epo.fif'%subject['id'])
     param['stim2locked']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_stim2locked-epo.fif'%subject['id'])
@@ -328,6 +326,9 @@ def streaks_numbers(array):
         x[ind] = count
     
     return x
+
+def gauss_smooth(array, sigma = 2):
+    return sp.ndimage.gaussian_filter1d(array, sigma=sigma, axis = 1) #smooths across time, given 2d array of trials x time
 
 def get_difficulty_sequences(subdat):
     '''
