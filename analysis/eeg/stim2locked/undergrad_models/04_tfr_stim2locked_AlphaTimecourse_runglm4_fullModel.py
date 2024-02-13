@@ -18,7 +18,7 @@ import seaborn as sns
 %matplotlib
 
 sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-from funcs import getSubjectInfo, gesd, plot_AR
+from funcs import getSubjectInfo, gauss_smooth
 
 wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 os.chdir(wd)
@@ -26,10 +26,9 @@ import glmtools as glm
 
 subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,    38, 39])
 #drop 36 & 37 as unusable and withdrew from task
-glms2run = 1 #1 with no baseline, one where tfr input data is baselined
-smooth = False #if smoothing single trial alpha timecourse
-transform = False #if converting power to decibels (10*log10 power)
-glmdir = op.join(wd, 'glms', 'stim2locked', 'alpha_timecourses', 'undergrad_models', 'glm4')
+smooth      = True #if smoothing single trial alpha timecourse
+transform   = False #if converting power to decibels (10*log10 power)
+glmdir      = op.join(wd, 'glms', 'stim2locked', 'alpha_timecourses', 'undergrad_models', 'glm4')
 if not op.exists(glmdir):
     os.mkdir(glmdir)
 
@@ -54,12 +53,12 @@ for i in subs:
         tmpdf2 = tmpdf2.assign(trlidz = tmpdf.trlid_z)
         tfr.metadata = tmpdf2
         
-        if iglm == 0:
-            addtopath = ''
-            baseline_input = False
-        elif iglm == 1:
-            addtopath = '_baselined'
-            baseline_input = True
+        # if iglm == 0:
+        #     addtopath = ''
+        #     baseline_input = False
+        # elif iglm == 1:
+        #     addtopath = '_baselined'
+        baseline_input = True
            
         posterior_channels = ['PO7', 'PO3', 'O1', 'O2', 'PO4', 'PO8', 'Oz', 'POz']
         

@@ -28,27 +28,27 @@ figpath = op.join(wd, 'figures', 'eeg_figs', 'stim2locked', 'undergrad_models', 
 if not op.exists(figpath):
     os.mkdir(figpath)
 
+plt.style.use('seaborn-v0_8-whitegrid') #this sets a default white background, grey ticklines
+plt.style.use('seaborn-v0_8-paper')
+plt.rcParams['axes.titlesize']   = 16
+plt.rcParams['figure.titlesize'] = 'large'
+plt.rcParams['figure.frameon']   = False
+plt.rcParams['xtick.labelsize']  = 12
+plt.rcParams['ytick.labelsize']  = 12
+plt.rcParams['axes.labelsize']   = 14
+plt.rcParams['savefig.edgecolor'] = '#FFFFFF'
+plt.rcParams['savefig.facecolor'] = '#FFFFFF'
+
 subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,    38, 39])
 #drop 36 & 37 as unusable and withdrew from task
-# subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,     22, 23, 24,     26, 27, 28,         31, 32, 33, 34, 35,        39]) #subjects from eyetracking analysis oo
-nsubs = subs.size
-
-# doesnt matter if you smooth per trial, or smooth the average. 
-# for regression, better to smooth trialwise
-# good to lightly smooth (1sd gaussian smoothing is not too much) for statistical power
-smoothing = True
-def gauss_smooth(array, sigma = 2):
-    return sp.ndimage.gaussian_filter1d(array, sigma=sigma, axis = 1) #smooths across time, given 2d array of trials x time
-
-
-times = np.round(np.load(op.join(glmdir, 'glm_timerange.npy')), decimals = 2)
-regnames = np.load(op.join(glmdir, 'regressor_names.npy'))
-contrasts = np.load(op.join(glmdir, 'contrast_names.npy'))
-
-betas = np.empty(shape = (nsubs, len(regnames), len(times)))
-copes = np.empty(shape = (nsubs, len(contrasts), len(times)))
-tstats = np.empty(shape = (nsubs, len(contrasts), len(times)))
-
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,     22, 23, 24,     26, 27, 28,         31, 32, 33, 34, 35,        39]) #subjects from eyetracking analysis oo
+nsubs       = subs.size
+times       = np.round(np.load(op.join(glmdir, 'glm_timerange.npy')), decimals = 2)
+regnames    = np.load(op.join(glmdir, 'regressor_names.npy'))
+contrasts   = np.load(op.join(glmdir, 'contrast_names.npy'))
+betas       = np.empty(shape = (nsubs, len(regnames), len(times)))
+copes       = np.empty(shape = (nsubs, len(contrasts), len(times)))
+tstats      = np.empty(shape = (nsubs, len(contrasts), len(times)))
 count = -1
 for i in subs:
     count += 1
@@ -62,23 +62,11 @@ for i in subs:
     betas[count] = ibetas
     copes[count] = icopes
     tstats[count] = itstats
-
-if smoothing:
-    #smooth the single subject beta/cope timecourses, rather than single trial timecourses
-    for i in range(nsubs):
-        # for ibeta in range(len(regnames)):
-        betas[i] = gauss_smooth(betas[i].copy())
-        
-        # for icope in range(len(contrasts)):
-        copes[i] = gauss_smooth(copes[i].copy())
-#%%
 betas_mean, betas_sem = betas.mean(0), sp.stats.sem(betas, axis =0, ddof = 0, nan_policy = 'omit')
 copes_mean, copes_sem = copes.mean(0), sp.stats.sem(copes, axis =0, ddof = 0, nan_policy = 'omit')
 
-colors = dict(intercept = '#000000',diff2 = '#e41a1c', diff4 = '#fc8d62', diff8 = '#b2df8a', diff12 = '#33a02c', trialnumber = '#8c510a')
+colors = dict(intercept = '#000000', diff2 = '#e41a1c', diff4 = '#fc8d62', diff8 = '#41ab5d', diff12 = '#006d2c', trialnumber = '#8c510a')
 
-
-#%%
 #visualise correct and incorrect trials, and their difference (2 subplots)
 fig = plt.figure(figsize = [6, 4])
 ax = fig.add_subplot(111)
@@ -92,7 +80,7 @@ for icope in range(contrasts.size):
 ax.set_xlim([-2.7, 1.7])
 ax.axhline(0, ls = 'dashed', color = '#000000', lw = 1.5)
 ax.axvline(0, ls = 'dashed', color = '#000000', lw = 1.5)
-ax.set_xlabel('time relative to stim1 onset (s)')
+ax.set_xlabel('time relative to stim2 onset (s)')
 ax.set_ylabel('Alpha power (Beta, AU)')
 ax.legend(loc = 'lower left', frameon = False)
 fig.savefig(op.join(figpath, 'model3_allTrials_difficulty.pdf'), format = 'pdf', dpi = 400)
