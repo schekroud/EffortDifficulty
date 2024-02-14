@@ -28,8 +28,10 @@ subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
 #drop 36 & 37 as unusable and withdrew from task
 smooth    = True #if smoothing single trial alpha timecourse
 transform = False #if converting power to decibels (10*log10 power)
-twin      = [1,2]
-twin2     = [-1.3, -0.3] #get the last second, uncontaminated by decomposition window
+twin1a    = [1,2]
+twin1b    = [2,3]
+twin1c    = [1,3]
+twin2     = [-2, -0.3] #get the last second, uncontaminated by decomposition window
 for i in subs:
     print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
     sub   = dict(loc = 'workstation', id = i)
@@ -60,14 +62,27 @@ for i in subs:
         tfrdat = gauss_smooth(tfrdat, sigma = 2)
     if transform:
         tfrdat = np.multiply(10, np.log10(tfrdat))
-    twin_times = (times>=twin[0]) & (times <= twin[1]) #true/false for in/outside this time range
-    
+        
+    twin_times = (times>=twin1a[0]) & (times <= twin1a[1]) #true/false for in/outside this time range
     #get just data in this time range
-    tfrdat = tfrdat[:,twin_times]
-    tfrdat = tfrdat.mean(axis=1) #average across time to get alpha power in this time window
-    
-    tfrs1 = tfrdat.copy()
+    tfrdat_twin1a = tfrdat[:,twin_times]
+    tfrdat_twin1a = tfrdat_twin1a.mean(axis=1) #average across time to get alpha power in this time window
+    tfrs1_twin1a = tfrdat_twin1a.copy()
     tokeep1 = tokeep.copy()
+    
+    #same for the second timewindow around stim1
+    twin_times = (times>=twin1b[0]) & (times <= twin1b[1]) #true/false for in/outside this time range
+    #get just data in this time range
+    tfrdat_twin1b = tfrdat[:,twin_times]
+    tfrdat_twin1b = tfrdat_twin1b.mean(axis=1) #average across time to get alpha power in this time window
+    tfrs1_twin1b = tfrdat_twin1b.copy()
+    
+    #same for the third timewindow around stim1
+    twin_times = (times>=twin1c[0]) & (times <= twin1c[1]) #true/false for in/outside this time range
+    #get just data in this time range
+    tfrdat_twin1c = tfrdat[:,twin_times]
+    tfrdat_twin1c = tfrdat_twin1c.mean(axis=1) #average across time to get alpha power in this time window
+    tfrs1_twin1c = tfrdat_twin1c.copy()
     
     #now get the same info for stim1locked data
     #this contains all trials
@@ -101,7 +116,8 @@ for i in subs:
     tfrs2   = tfrdat.copy()
     tokeep2 = tokeep.copy()
     
-    eegdata = pd.DataFrame(np.array([tfrs1, tokeep1, tfrs2, tokeep2]).T, columns = ['s1eeg', 's1keep', 's2eeg', 's2keep'])
+    eegdata = pd.DataFrame(np.array([tfrs1_twin1a, tfrs1_twin1b, tfrs1_twin1c, tokeep1, tfrs2, tokeep2]).T,
+                           columns = ['s1eeg_twin1', 's1eeg_twin2', 's1eeg_twin3', 's1keep', 's2eeg', 's2keep'])
     eegdata = eegdata.assign(trlid = np.arange(len(eegdata))+1,
                              subid = i)
     
