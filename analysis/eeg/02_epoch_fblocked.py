@@ -19,25 +19,9 @@ from matplotlib import pyplot as plt
 sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
 from funcs import getSubjectInfo, gesd, plot_AR
 
-def streaks_numbers(array):
-    '''
-    finds streaks of an array where a number is the same
-    - useful for finding sequences of trials where difficulty is the same
-    note: bit slow because it literally loops over an array so it isn't the fastest, but it works
-    '''
-    x = np.zeros(array.size).astype(int)
-    count = 0
-    for ind in range(len(x)):
-        if array[ind] == array[ind-1]:
-            count += 1 #continuing the sequence
-        else: #changed difficulty
-            count = 1
-        x[ind] = count
-    return x
-
 wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 os.chdir(wd)
-subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34])
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39])
 for i in subs:
     print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
     sub   = dict(loc = 'workstation', id = i)
@@ -82,18 +66,11 @@ for i in subs:
         epoched = mne.Epochs(raw, events, events_feedback, tmin, tmax, baseline,
                              reject_by_annotation=False, preload=False, on_missing='ignore') #it doesn't like to continue if it doesn't find a trigger
         #set on_missing to ignore just so that it continues, but can still check number of triggers is correct
-        bdata = pd.read_csv(param['behaviour'], index_col = None)
-        bdat = pd.DataFrame()
-        for iblock in bdata.blocknumber.unique():
-            #this needs to be run separately for each block 
-            tmpdata = bdata.query('blocknumber == @iblock')
-            #add in where this trial is within a perceptual difficulty sequence
-            tmpdata = tmpdata.assign(diffseqpos = streaks_numbers(tmpdata.difficultyOri.to_numpy()))
-            #reconstruct the behavioural data file
-            bdat = pd.concat([bdat, tmpdata])
-            # bdata = bdata.assign(diffseqpos = streaks_numbers(bdata.difficultyOri.to_numpy()))
+        bdata = pd.read_csv(param['behaviour'], index_col = None)    
+        if i == 37:
+            bdata = bdata.query('blocknumber in [1,2,3]') #participant withdrew after 3 blocks of task
         
-        epoched.metadata = bdat
+        epoched.metadata = bdata
         epoched.save(fname = param['fblocked'], overwrite = True)
         
         #remove from RAM
@@ -114,54 +91,18 @@ for i in subs:
         epoched2 = mne.Epochs(raw2, events2, events_feedback, tmin, tmax, baseline,
                              reject_by_annotation=False, preload=False, on_missing='ignore') #it doesn't like to continue if it doesn't find a trigger
         
-        datdir = op.join(wd, 'data', 'datafiles', 's29')
-        filelist = os.listdir(datdir)
-        flist1 = [x for x in filelist if 's29b' not in x]
-        flist2 = [x for x in filelist if 's29b'     in x]
-
-        bdata1 = pd.DataFrame()
-        for file in flist1:
-            tmpdf = pd.read_csv(op.join(datdir, file), index_col=False)
-            bdata1 = pd.concat([bdata1, tmpdf])
-        #this dataset crashed shortly after the start of the third block, so we have 3 blocks of behavioural data (most of which is just missing data)
-        #cut it down to just the trials with data
-        bdata1 = bdata1[:len(epoched.events)]
+        #need to cut down 
+        bdata = pd.read_csv(param['behaviour'], index_col=False)
+        
+        bdata1 = bdata.copy()[:len(epoched.events)] #only blocks 1/2 from this file truly apply to this recording
         epoched.metadata = bdata1 #assign the behavioural data into the eeg data
         epoched = epoched['blocknumber in [1,2]'] #because we only have 2 blocks of usable data, just take the two blocks
         
-
-        #the second recording has three full blocks of data in, so we'll read in those datafiles and add them in
-        bdata2 = pd.DataFrame()
-        for file in flist2:
-            tmpdf = pd.read_csv(op.join(datdir, file), index_col=False)
-            bdata2 = pd.concat([bdata2, tmpdf])
+        bdata2 = bdata.copy().query('blocknumber in [3,4,5]')
         epoched2.metadata = bdata2
         
         epochs = mne.concatenate_epochs([epoched, epoched2]) #combine into one file, finally
-        bdata = epochs.metadata.copy()
-        bdata = bdata.assign(trlid = np.add(np.arange(len(bdata)),1)) #assign proper trial numbers
-        blocks=np.arange(1,6,1)
-        bdata = bdata.assign(blocknumber = np.sort(np.tile(blocks, int(len(bdata)/blocks.size)))) #add proper block number in        
-        bdat = pd.DataFrame()
-        for iblock in bdata.blocknumber.unique():
-            #this needs to be run separately for each block 
-            tmpdata = bdata.query('blocknumber == @iblock')
-            #add in where this trial is within a perceptual difficulty sequence
-            tmpdata = tmpdata.assign(diffseqpos = streaks_numbers(tmpdata.difficultyOri.to_numpy()))
-            #reconstruct the behavioural data file
-            bdat = pd.concat([bdat, tmpdata])
-            # bdata = bdata.assign(diffseqpos = streaks_numbers(bdata.difficultyOri.to_numpy()))
-        
-        #need to add in a few other things too
-        bdat = bdat.assign(subid = i)
-        bdat = bdat.assign(fbgiven = 'timed out')
-        bdat['fbgiven'] = np.select([np.isin(bdat.fbtrig, [60]), np.isin(bdat.fbtrig, [61])],
-                                     ['correct',                 'incorrect'],
-                                     default = 'timed out')        
-        bdat = bdat.assign(prevtrlfb = bdat.fbgiven.shift(1)) #get previous trial feedback
-        bdat = bdat.assign(rewarded = np.where(bdat.fbgiven == 'correct', 1, 0))
-        bdat = bdat.assign(unrewarded = np.where(bdat.fbgiven == 'incorrect', 1, 0))
-        epochs.metadata = bdat
+        epochs.metadata = bdata #finally just ensure the metadata is correct
         epochs.save(fname = param['fblocked'], overwrite = True)
         
         #remove from RAM
@@ -195,18 +136,7 @@ for i in subs:
         epoched2.metadata = bdata2
         
         epochs = mne.concatenate_epochs([epoched, epoched2]) #combine into one file, finally
-        bdata = epochs.metadata.copy()
-        bdat = pd.DataFrame()
-        for iblock in bdata.blocknumber.unique():
-            #this needs to be run separately for each block 
-            tmpdata = bdata.query('blocknumber == @iblock')
-            #add in where this trial is within a perceptual difficulty sequence
-            tmpdata = tmpdata.assign(diffseqpos = streaks_numbers(tmpdata.difficultyOri.to_numpy()))
-            #reconstruct the behavioural data file
-            bdat = pd.concat([bdat, tmpdata])
-            # bdata = bdata.assign(diffseqpos = streaks_numbers(bdata.difficultyOri.to_numpy()))
-    
-        epochs.metadata = bdat
+        epochs.metadata = bdata
         epochs.save(fname = param['fblocked'], overwrite = True)
         
         #remove from RAM

@@ -23,9 +23,8 @@ from funcs import getSubjectInfo, gesd, plot_AR
 
 wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 os.chdir(wd)
-subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34])
-subs = [29, 30]
-
+subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39])
+# subs = np.array([                                                                                                    35, 36, 37, 38, 39])
 for i in subs:
     print('\n- - - - working on subject %s - - - - -\n'%(str(i)))
     sub   = dict(loc = 'workstation', id = i)
@@ -33,7 +32,6 @@ for i in subs:
     
     #read in the already ica cleaned + epoched data
     epoched = mne.read_epochs(fname = param['stim1locked'], preload = True)
-    times = epoched.times
 
     #do trial rejection from the two files separately before concatenating events
     _, keeps = plot_AR(deepcopy(epoched).pick_types(eeg=True),
@@ -54,7 +52,7 @@ for i in subs:
     #save the epoched data, combined with metadata, to file
     epoched.save(fname = param['stim1locked'].replace('stim1locked', 'stim1locked_cleaned'), overwrite=True)
     #save the resulting behavioural data too
-    epoched.metadata.to_csv(param['behaviour'].replace('combined', 'stim1locked_combined_eegcleaned'))
+    epoched.metadata.to_csv(param['behaviour'].replace('combined_py', 'stim1locked_combined_py_eegcleaned'))
     
     del(epoched)
     plt.close('all')

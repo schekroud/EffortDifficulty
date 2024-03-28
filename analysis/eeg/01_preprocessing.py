@@ -30,15 +30,17 @@ os.chdir(wd)
 
 
 subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39])
-subs = np.array([                                                                                                    35, 36, 37, 38, 39])
+# subs = np.array([                                                                                                    35, 36, 37, 38, 39])
+runanyway = True
 for i in subs:
     sub   = dict(loc = 'workstation', id = i)
     param = getSubjectInfo(sub)
-    if not op.exists(param['eeg_preproc']) and i not in [29, 30]:      
+    # if not op.exists(param['eeg_preproc']) and i not in [29, 30]:  
+    if runanyway:
         raw = mne.io.read_raw_curry(fname = param['raweeg'], preload = True)
         
-        raw = mne.add_reference_channels(raw, ref_channels = 'M2', copy = False) #left mastoid was active reference, add it back in (empty channel)
-        raw.rename_channels({'RM':'M1'})
+        raw = mne.add_reference_channels(raw, ref_channels = 'LM', copy = False) #left mastoid was active reference, add it back in (empty channel)
+        # raw.rename_channels({'RM':'M2'})
         
         #create bipolar eog channel from EOGL (lower eye electrode) and referencing it to FP1 (above left eye)
         raw = mne.set_bipolar_reference(raw, drop_refs = False, #keep these channels in the data so we keep FP1
@@ -46,26 +48,26 @@ for i in subs:
         raw.set_channel_types(mapping = {
             'VEOG':'eog',
             'HEOG': 'eog',
-            'M1':'misc', 
-            'M2':'misc',
+            'LM':'misc', 
+            'RM':'misc',
             'EOGL':'misc', 
             'Trigger':'misc'
             })
         
         raw.set_montage('easycap-M1', on_missing='raise', match_case = False)
         
-        reftype = 'average'
+        raw.filter(1, 40, n_jobs=3) #filter between 0.1 and 40 Hz
+        reftype = 'mastoid'
         if reftype == 'mastoid':
-            raw.filter(1, 40, n_jobs=3) #filter between 0.1 and 40 Hz
-            raw.set_eeg_reference(ref_channels = ['M1', 'M2']) # set average mastoid reference
+            # raw.set_eeg_reference(ref_channels = ['LM', 'RM']) # set average mastoid reference
             #this filters bad channels too, which is fine
             raw.info['bads'] = deepcopy(param['badchans'])
             raw.info['bads'].extend(['AFz']) #AFz was the ground, we want to interpolate it
         elif reftype == 'average':
             #set bad channels here so they are ignored in the average referencing
-            raw.filter(1, 40, picks = 'all', n_jobs=3) #make sure that even 'bad' channels are filtered too (no real reason not to)
+            # raw.filter(1, 40, picks = 'all', n_jobs=3) #make sure that even 'bad' channels are filtered too (no real reason not to)
             #first re-ref to average mastoid to reduce asymmetry in the reference
-            raw.set_eeg_reference(ref_channels = ['M1', 'M2'])
+            raw.set_eeg_reference(ref_channels = ['LM', 'RM'])
             
             raw.info['bads'] = deepcopy(param['badchans'])
             raw.info['bads'].extend(['AFz']) #AFz was the ground, we want to interpolate it
@@ -89,7 +91,7 @@ for i in subs:
         
         #run ica
         ica = mne.preprocessing.ICA(n_components = 30, #cap at 30 components to be useful
-                                    method = 'infomax').fit(raw,
+                                    method = 'infomax').fit(raw, picks='eeg',
               reject_by_annotation = True) #this will exclude break periods if marked as bad using the code above
               # reject = dict(eeg = 400e-6))
         # ideally this just excludes periods between blocks where ppts took breaks as they move a lot then
