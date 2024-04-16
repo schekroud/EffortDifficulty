@@ -44,11 +44,15 @@ def getSubjectInfo(subject):
     param['eyes_preproc']   = op.join(path, 'eyes', 'preprocessed', 'EffDS%02da_preprocessed-raw.fif'%subject['id'])
     param['s1locked_eyes']  = op.join(path, 'eyes', 'stim1locked', 'EffDS%02da_stim1locked-epo.fif'%subject['id'])   
     param['plrlocked']      = op.join(path, 'eyes', 'stim1locked', 'EffDS%02da_plrlocked-epo.fif'%subject['id'])   
-    param['fblocked_eyes']  = op.join(path, 'eyes', 'fblocked', 'EffDS%02da_fblocked-epo.fif'%subject['id'])   
+    param['fblocked_eyes']  = op.join(path, 'eyes', 'fblocked', 'EffDS%02da_fblocked-epo.fif'%subject['id'])  
+    param['s2locked_eyes']  = op.join(path, 'eyes', 'stim2locked', 'EffDS%02da_stim2locked-epo.fif'%subject['id'])   
     #paths to save other eeg objects
     param['stim1locked']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_stim1locked-epo.fif'%subject['id'])
     param['stim2locked']    = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_stim2locked-epo.fif'%subject['id'])
     param['fblocked']       = op.join(wd, 'eeg', substr, 'EffortDifficulty_s%02d_fblocked-epo.fif'%subject['id'])
+    
+    if subject['loc'] == 'laptop':
+        param['stim1locked'] = op.join(param['path'], 'eeg', substr, 'EffortDifficulty_s%02d_stim1locked-epo.fif'%subject['id'])
     
     
     # if subject['id'] == :
