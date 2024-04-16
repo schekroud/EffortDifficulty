@@ -54,6 +54,9 @@ def getSubjectInfo(subject):
     if subject['loc'] == 'laptop':
         param['stim1locked'] = op.join(param['path'], 'eeg', substr, 'EffortDifficulty_s%02d_stim1locked-epo.fif'%subject['id'])
     
+    if subject['loc'] == 'workstation':
+        param['raweeg'] = f'E:/EffortDifficulty/EEG/raw/EffortDifficulty_{substr}.dat'
+    
     
     # if subject['id'] == :
     #     param['badchans'] = []
