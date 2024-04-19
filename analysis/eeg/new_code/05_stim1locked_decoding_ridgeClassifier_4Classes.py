@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Apr 15 13:55:15 2024
+Created on Tue Apr 16 20:31:51 2024
 
-@author: sammichekroud
+@author: sammirc
 """
 import numpy as np
 import scipy as sp
@@ -29,23 +28,22 @@ elif loc == 'workstation':
     wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 
 from funcs import getSubjectInfo
+from decoding_functions import run_decoding
+from joblib import parallel_backend
 
 os.chdir(wd)
 subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39])
 
-figpath = op.join(wd, 'figures', 'decoding', 'LDA')
-
+figpath = op.join(wd, 'figures', 'decoding', 'ridge')
 
 import progressbar
 progressbar.streams.flush()
-
-# accuracies = np.zeros(shape = [subs.size, 1251])
 accuracies = np.zeros(shape = [subs.size, 1001])
 
-
-use_vischans_only  = True
-use_pca            = True #using pca after selecting only visual channels is really bad for the decoder apparently
+use_vischans_only  = False
+use_pca            = False #using pca after selecting only visual channels is really bad for the decoder apparently
 smooth_singletrial = True
+testtype           = 'rskf'
 
 progressbar.streams.wrap_stderr()
 bar = progressbar.ProgressBar(max_value = len(subs)).start()
@@ -62,8 +60,7 @@ for i in subs:
                                 verbose = 'ERROR', preload=True) #already baselined
     dropchans = ['RM', 'LM', 'EOGL', 'HEOG', 'VEOG', 'Trigger'] #drop some irrelevant channels
     epochs.drop_channels(dropchans) #61 scalp channels left
-    epochs.crop(tmin = -0.5, tmax = 1.5) #crop for speed and relevance
-    
+    epochs.crop(tmin = -0.5, tmax = 1.5) #crop for speed and relevance  
     #drop some trials
     # epochs = epochs['fbtrig != 62'] #drop timeout trials
     # epochs = epochs['diffseqpos > 3'] #remove the first three trials of each new difficulty sequence
@@ -81,68 +78,42 @@ for i in subs:
         epochs = epochs.pick(picks = [
             'P7', 'P5', 'P3', 'P1', 'Pz', 'P2', 'P4', 'P6', 'P8',
                     'PO7', 'PO3',  'POz', 'PO4', 'PO8', 
-                            'O1', 'Oz', 'O2'
-            ])
-    
+                            'O1', 'Oz', 'O2'])
     data   = epochs._data.copy() #get the data matrix
     if smooth_singletrial:
-        data = sp.ndimage.gaussian_filter1d(data.copy(), sigma = 8) #this is equivalent to smoothing with a 14ms gaussian blur as 500Hz sample rate.
+        data = sp.ndimage.gaussian_filter1d(data.copy(), sigma = 7) #this is equivalent to smoothing with a 14ms gaussian blur as 500Hz sample rate.
         #this should help with some denoising
     bdata  = epochs.metadata.copy() 
     [ntrials, nfeatures, ntimes] = data.shape #get data shape -- [trials x channels x timepoints]
+
+    #stimulus orientations are drawn from between -60 - -30, and 30-60
+    #these orientations are drawn randomly from a uniform distribution, so by design there is no bias
+    #lets just split these immediately in two, and do a four class decoding
+    # -30>-45, -46>-60, 30-45, 46-60
+    stim1oris = bdata.stim1ori.to_numpy()
+    labels = np.zeros_like(stim1oris) 
+    labels[np.isin(stim1oris, np.arange(-60, -45))] = 1 #between -60 and -46 
+    labels[np.isin(stim1oris, np.arange(-45, -29))] = 2 #between -45 and -30
+    labels[np.isin(stim1oris, np.arange(30, 46))]   = 3 #between 30 and 45 (inclusive)
+    labels[np.isin(stim1oris, np.arange(46, 61))]   = 4 #between 46 and 60 
+
     
-    #we want to predict the orientation of the stimulus relative to the vertical cardinal axis.
-    #this is coded in arraytiltcond
-    #0 = negative, 1 = positive (i.e. anticlockwise or clockwise relative to vertical)
-    labels = bdata.arraytiltcond.to_numpy()
     accuracy   = np.zeros(ntimes) * np.nan
+    
     prediction = np.zeros(shape = [ntrials, ntimes]) * np.nan
     label_pred = np.zeros_like(prediction) * np.nan
-    # prediction_probs = np.zeros(shape = )
-    for tp in range(ntimes):
-        X = data[:,:,tp].copy()
-        pca = skl.decomposition.PCA(n_components = 0.95) #run pca decomposing to explain 95% of variance
-        X_pca = pca.fit(X).transform(X)
-        
-        #train test set
-        testtype = 'rskf'
-        if testtype == 'leaveoneout':
-            cv = skl.model_selection.LeaveOneOut()
-        elif testtype == 'rskf':
-            cv = skl.model_selection.RepeatedStratifiedKFold(n_splits = 10, n_repeats = 1, random_state = 420)
-        
-        for train_index, test_index in cv.split(X, labels):
-            if use_pca:
-                x_train, x_test = X_pca[train_index], X_pca[test_index]
-            else:
-                x_train, x_test = X[train_index], X[test_index]
-            y_train  = labels[train_index]
-            
-            #if using leave one out splits, need to reshape so scaler works
-            if testtype == 'leaveoneout':
-                x_test = x_test.reshape(1, -1)
-            
-            scaler = skl.preprocessing.StandardScaler().fit(x_train)
-            x_train = scaler.transform(x_train)
-            x_test  = scaler.transform(x_test)
-
-            clf = skl.discriminant_analysis.LinearDiscriminantAnalysis(solver = 'svd')
-            clf.fit(x_train, y_train)
-            label_pred[test_index,tp] = clf.predict(x_test) #get binary class predictions
-            
-            #you can get single trial evidence (probability of correct class assignment) if you want to so single trial analyses
-            # predprobas = clf.predict_proba(x_test) #this gives probability assigned to either 0 or 1 (it is [ntrials x nClasses] in shape)
-            # #we want to get the probability of assigning the *true* label
-            # truelabels = labels[test_index]
-            # classprobs = np.array([predprobas[i][truelabels[i]] for i in range(len(predprobas))])
-            
-            
-            # prediction[test_index,tp] = np.squeeze(clf.predict_proba(x_test))[clf.predict(x_test)]
-            # score[test_index, tp] = clf.score(x_train, y_train)
-        
-        accuracy[tp] = skl.metrics.accuracy_score(labels,label_pred[:,tp])
+    
+    # progressbar.streams.wrap_stderr()
+    # bar = progressbar.ProgressBar(max_value = ntimes).start()
+    with parallel_backend('loky', n_jobs = 4):
+        for tp in range(ntimes):
+            # bar.update(tp+1)
+            preds = run_decoding(data, labels, tp, use_pca, testtype, classifier = 'ridge', nsplits = 10)
+            label_pred[:,tp] = preds
+            accuracy[tp] = skl.metrics.accuracy_score(labels,label_pred[:,tp])
     accuracies[subcount] = accuracy
 
+#%%
 # accs = sp.ndimage.gaussian_filter1d(accuracies.copy(), axis = 1, sigma = 10)
 accs = accuracies.copy()
 
@@ -157,10 +128,10 @@ ax.fill_between(epochs.times,
                 np.subtract(gave_acc, sem_acc),
                 color = '#3182bd', alpha = 0.3, edgecolor = None)
 ax.axvline(x = 0, ls = 'dashed', color = 'k')
-ax.axhline(y = 0.5, ls = 'dashed', color = 'k')
+ax.axhline(y = 0.25, ls = 'dashed', color = 'k')
 ax.set_xlabel('time relative to stim1 onset (s)')
-ax.set_ylabel('classifier accuracy')
-ax.set_ylim([0.48, 0.6])
-# ax.set_xlim([-0.5, 1])
-fig.savefig(op.join(figpath, f'decoding_LDA_allTrials_vischansonly{use_vischans_only}_usePca{use_pca}_{testtype}.pdf'), format = 'pdf', dpi = 400)
+ax.set_ylabel('classifier accuracy');
+ax.set_ylim([0.24, 0.32])
+fig.savefig(op.join(figpath, f'decoding_RidgeClassifier4Classes_allTrials_vischansonly{use_vischans_only}_usePca{use_pca}_{testtype}.pdf'), format = 'pdf', dpi = 400)
+            
             
