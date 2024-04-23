@@ -115,7 +115,6 @@ def run_decoding_predproba(data, labels, tp, use_pca, testtype, classifier,  nsp
             predproba = ps
         elif classifier in ['LDA', 'svm']:
             predproba = pipe.predict_proba(x_test)
-            predprobas[test_index] = predproba
             
         elif classifier == 'knn':
             scaler = skl.preprocessing.StandardScaler()
@@ -126,6 +125,7 @@ def run_decoding_predproba(data, labels, tp, use_pca, testtype, classifier,  nsp
                                                      metric_params = {'VI':np.linalg.inv(np.cov(x_train.T))})
             clf.fit(x_train, y_train)
             tmp[test_index] = clf.predict(x_test)
-            predprobas[test_index] = clf.predict_proba(x_test)
+            predproba = clf.predict_proba(x_test)
     
+    predprobas[test_index] = predproba
     return tmp, predprobas #return label predictions for each trial, at this time point
