@@ -17,7 +17,7 @@ import sys
 from matplotlib import pyplot as plt
 %matplotlib
 
-loc = 'workstation'
+loc = 'laptop'
 if loc == 'laptop':
     sys.path.insert(0, '/Users/sammichekroud/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
     wd = '/Users/sammichekroud/Desktop/postdoc/student_projects/EffortDifficulty'
@@ -38,16 +38,18 @@ import progressbar
 progressbar.streams.flush()
 
 nsamples = 200 #samples in the epoch at 100hz sample rate
-nsamples = 1001 #samples in the epoch at 500hz sample rate
+# nsamples = 1001 #samples in the epoch at 500hz sample rate
 accuracies = np.zeros(shape = [subs.size, nsamples])
 diffaccuracies = np.zeros(shape = [subs.size, 4, nsamples])
 use_vischans_only  = True
 use_pca            = False #using pca after selecting only visual channels is really bad for the decoder apparently
 smooth_singletrial = False
 testtype           = 'rskf'
+# testtype = 'leaveoneout'
 
-nbins = 8
-centprobs = np.zeros(shape = [subs.size, nbins-1, nsamples]) #store the average tuning curve for each participant
+nbins      = 8
+centprobs  = np.zeros(shape = [subs.size, 2, nbins-1, nsamples]) #store the average tuning curve for each participant
+centprobs2 = np.zeros(shape = [subs.size, 2, nbins-1, nsamples]) #store the average tuning curve for each participant
 
 progressbar.streams.wrap_stderr()
 bar = progressbar.ProgressBar(max_value = len(subs)).start()
@@ -56,7 +58,7 @@ for i in subs:
     subcount += 1
     bar.update(subcount+1)
     # sub   = dict(loc = 'laptop', id = i)
-    sub   = dict(loc = 'workstation', id = i)
+    sub   = dict(loc = loc, id = i)
     param = getSubjectInfo(sub)
     print(f'\n- - - - working on subject {i} - - - -')
     
@@ -65,6 +67,8 @@ for i in subs:
     dropchans = ['RM', 'LM', 'EOGL', 'HEOG', 'VEOG', 'Trigger'] #drop some irrelevant channels
     epochs.drop_channels(dropchans) #61 scalp channels left
     epochs.crop(tmin = -0.5, tmax = 1.5) #crop for speed and relevance  
+    epochs.resample(100)
+    times = epochs.times
     
     if i == 16:
         epochs = epochs['blocknumber != 4']
@@ -87,98 +91,163 @@ for i in subs:
 
     orientations = bdata.stim1ori.to_numpy()
     
+    convprobs     = np.empty(shape = [2, nbins-1, epochs.times.size])
+    nonconvprobs  = np.zeros_like(convprobs) * np.nan
+    nonconvprobs2 = np.zeros_like(convprobs) * np.nan
     
-    posoris = orientations[orientations>0] #take just the positive orientations here
-    bins = np.linspace(30, 60+1, nbins)
-    labelbins = np.digitize(posoris, bins)
-    #pd.value_counts(labelbins)
-    nclasses = np.unique(labelbins).size
-    
-    data_pos = data.copy()[orientations>0, :] #take just the positively oriented data to begin with
-    
-    
-    #pre-create some variables to store info
-    label_pred = np.zeros(shape = [len(posoris), ntimes]) * np.nan #store the predicted label for each trial and time
-    accuracy = np.zeros(ntimes) #store across-trial classifier accuracy at each time point
-    
-    predictedprobs     = np.zeros(shape = [len(posoris), nclasses, ntimes]) #store the P(class) for each class, per trial and time point
-    centred_probabilities = np.zeros_like(predictedprobs) #store P(class), centred on the predicted class
-    
-    for tp in range(ntimes): #for each time point
-        preds, predprobas = run_decoding_predproba(data_pos, labelbins, tp, use_pca, testtype, classifier='ridge') #run decoding
-        #this outputs:
-        # preds -- the predicted class for each trial (ntrials)
-        # predprobas - the P(class) for each class (ntrials x nclasses)
+    oricount = -1
+    for oritype in ['neg', 'pos']:
+        oricount += 1
+        if oritype == 'pos':
+            useoris = np.greater(orientations, 0)
+        elif oritype == 'neg':
+            useoris = np.less(orientations, 0)
         
-        label_pred[:,tp] = preds.astype(int) #store the across-trial predicted class labels for this time point
+        oris = orientations[useoris]
+        bins = np.linspace(oris.min(), oris.max()+1, nbins)
+        labelbins = np.digitize(oris, bins)
+        nclasses = np.unique(labelbins).size
         
-        #we want to shift these predicted probabilities, centering them on the predicted class label
-        predprobas_shifted = np.zeros_like(predprobas) * np.nan #create a new, nan-array to store the centred class probabilities
+        data_use = data.copy()[useoris, :] #take just the positively oriented data to begin with
         
-        #need to shift predprobas to centre on the predicted class
-        for rowid in range(0, predprobas.shape[0]): #loop over rows(trials) of the class prediction probabilities
-            ilabel = preds[rowid] #get the trial
-            predprobas_shifted[rowid] = np.roll(predprobas[rowid,:], int(np.floor(nbins/2) - ilabel)) #centre the class predictions on the predicted class
         
-        centred_probabilities[:,:,tp] = predprobas_shifted #store the label centred predicted probabilities
-        predictedprobs[:,:,tp]        = predprobas         #store the class predicted probabilities
-    
-    #get across trial accuracy and store this
-    # for tp in range(ntimes):
+        #pre-create some variables to store info
+        label_pred = np.zeros(shape = [len(oris), ntimes]) * np.nan #store the predicted label for each trial and time
+        accuracy = np.zeros(ntimes) #store across-trial classifier accuracy at each time point
         
+        predictedprobs     = np.zeros(shape = [len(oris), nclasses, ntimes]) #store the P(class) for each class, per trial and time point
+        centred_probabilities = np.zeros_like(predictedprobs) #store P(class), centred on the predicted class
+        centred_probabilities2 = np.zeros_like(predictedprobs) #store P(class), centred on the predicted class
+        
+        for tp in range(ntimes): #for each time point
+            preds, predprobas = run_decoding_predproba(data_use, labelbins, tp, use_pca, testtype, classifier='svm') #run decoding
+            #this outputs:
+            # preds -- the predicted class for each trial (ntrials)
+            # predprobas - the P(class) for each class (ntrials x nclasses)
+            
+            label_pred[:,tp] = preds.astype(int) #store the across-trial predicted class labels for this time point
+            
+            #we want to shift these predicted probabilities, centering them on the predicted class label
+            predprobas_shifted  = np.zeros_like(predprobas.copy()) * np.nan #create a new, nan-array to store the centred class probabilities
+            predprobas_shifted2 = np.zeros_like(predprobas.copy()) * np.nan #create a new, nan-array to store the centred class probabilities
+            
+            #need to shift predprobas to centre on the predicted class
+            for rowid in range(0, predprobas.shape[0]): #loop over rows(trials) of the class prediction probabilities
+                ilabel = preds[rowid] #get the trial
+                ilabel2 = labelbins[rowid] #get the actual class on this trial rather than predicted class
+                # labind = ilabel-1 #the label isnt in python indexing, so lets just fix this
+                nshift = int(np.floor((nclasses+1)/2)-ilabel)
+                nshift2 = int(np.floor((nclasses+1)/2)-ilabel2)
+                shifted = np.roll(predprobas[rowid,:], nshift) #centre the class predictions on the predicted class
+                shifted2 = np.roll(predprobas[rowid,:], nshift2)
+                if nshift >0:
+                    shifted[:nshift] = np.nan #set the shifted vals to nan
+                elif nshift < 0:
+                    shifted[nshift:] = np.nan
+                
+                if nshift2 >0:
+                    shifted2[:nshift2] = np.nan #set the shifted vals to nan
+                elif nshift2 < 0:
+                    shifted2[nshift2:] = np.nan
+                
+                predprobas_shifted[rowid] = shifted.copy()
+                predprobas_shifted2[rowid] = shifted2.copy()
+            
+            
+            
+            centred_probabilities[:,:,tp]  = predprobas_shifted #store the label centred predicted probabilities
+            centred_probabilities2[:,:,tp] = predprobas_shifted2 #store the label centred predicted probabilities
+            predictedprobs[:,:,tp]         = predprobas         #store the class predicted probabilities
+        
+        nonconvprobs[oricount]  = np.nanmean(centred_probabilities, axis=0)
+        nonconvprobs2[oricount] = np.nanmean(centred_probabilities2, axis=0)
     
-    smooth_probs = False
-    if smooth_probs:
-        raw_centred_probs = centred_probabilities.copy()
-        centred_probabilities = sp.ndimage.gaussian_filter1d(centred_probabilities, sigma = 5)
-    
-    #to convolve with a cosine we need to get cos(theta) for the angles of the bins
-    # angrange = 30 #bins between 30 and 60 degrees
-    binmids = (bins[1:] + bins[:-1])/2 - 45 #get the middle of each bin, centre onf 45 (middle of the angle range)
-    theta = np.cos(np.radians(binmids))
-    # plt.figure(); plt.plot(binmids, theta)
-    
-    #do full range from -pi to pi
-    # theta = np.arange((nclasses))/(nclasses)*(2*np.pi)-np.pi
-    # plt.figure(); plt.plot(binmids, np.cos(theta))
-    # theta = np.cos(theta)
-    
-    convolved_probas = np.zeros_like(centred_probabilities) * np.nan
-   
-    for trl in range(posoris.size): #loop overtrials
-       distances = centred_probabilities.copy()[trl]
-       convdist = np.zeros_like(distances) * np.nan
-       for tp in range(ntimes):
-           t = theta * distances[:,tp]
-           convolved_probas[trl,:,tp] = t
-
-    centprobs[subcount] = centred_probabilities.mean(axis=0) #store the across trial 'tuning curve'
+    centprobs[subcount] = nonconvprobs #store the across trial centred prediction probabilities
+    centprobs2[subcount] = nonconvprobs2 #store the across trial centred prediction probabilities
 
 #%%
 
+#centprobs is centred on the predicted class
+#centprobs2 is centred on the actual orientation 
+
 gmean_centprobs = centprobs.copy().mean(0)
-#for vis, add a new column to make it symmetrical
-# gmean_centprobs = np.append(gmean_centprobs, gmean_centprobs[0,:].reshape(1,-1), axis=0)
 
-fig = plt.figure(figsize = [6,4])
-ax = fig.add_subplot(111)
-plot = ax.imshow(gmean_centprobs, aspect='auto', interpolation = 'none',
-          extent = [epochs.times.min(), epochs.times.max(), 0, 6], vmin = -0.5, vmax = 0.5,
-          cmap = 'RdBu_r')
+fig = plt.figure(figsize = [12, 6])
+ax = fig.add_subplot(121)
+plot = ax.imshow(gmean_centprobs[0].T, 
+      aspect='auto', origin = 'lower', #extent = np.array([times.min(), times.max(), 0, nclasses]), #vmin = vmin, vmax = vmax,
+      extent = [0, nclasses, times.min(), times.max()],
+      cmap = 'RdBu_r', interpolation = 'none')#, vmin = 1/nclasses - 0.05, vmax = 1/nclasses +0.05 )
+ax.set_xticks(np.arange(0.5, nclasses+.5), labels = np.arange(1, nclasses+1).astype(str))
+ax.set_xlabel('orientation class')
+ax.set_ylabel('time rel. to stim1 onset (s)')
+ax.set_ylim([0, 1])
+ax.set_title('anti clockwise')
+# fig.colorbar(plot)
+
+ax = fig.add_subplot(122)
+plot = ax.imshow(gmean_centprobs[1].T, 
+      aspect='auto', origin = 'lower', #extent = [times.min(), times.max(), 0, nclasses], #vmin = vmin, vmax = vmax,
+      extent = [0, nclasses, times.min(), times.max()],
+      cmap = 'RdBu_r', interpolation = 'none')#, vmin = 1/nclasses - 0.05, vmax = 1/nclasses +0.05 )
+ax.set_xticks(np.arange(0.5, nclasses+.5), labels = np.arange(1, nclasses+1).astype(str))
+ax.set_xlabel('orientation class')
+ax.set_ylabel('time rel. to stim1 onset (s)')
+ax.set_ylim([0, 1])
+ax.set_title('clockwise')
+fig.colorbar(plot)
+# 
+
+negoris = np.arange(-60, -30+1)
+posoris = np.arange(30, 60+1)
+
+negbins = np.linspace(negoris.min(), negoris.max()+1, nbins)
+posbins = np.linspace(posoris.min(), posoris.max()+1, nbins)
+
+negbinmids = (negbins[1:] + negbins[:-1])/2 + 45
+posbinmids = (posbins[1:] + posbins[:-1])/2 - 45
+
+negtheta = np.cos(np.radians(negbinmids))
+postheta = np.cos(np.radians(posbinmids))
+
+
+convedprobs = np.empty(centprobs.shape) * np.nan
+
+for isub in range(subs.size): #loop overtrials
+   distances = centprobs.copy()[isub]
+   negdists  = distances.copy()[0]
+   posdists  = distances.copy()[1]
+   
+   for tp in range(ntimes):
+       tneg = negtheta * negdists[:,tp]
+       tpos = postheta * posdists[:,tp]
+       
+       convedprobs[isub, 0, :, tp] = tneg
+       convedprobs[isub, 1, :, tp] = tpos
+
+gmean_convedprobs = np.nanmean(convedprobs, axis=0)#.mean(axis=0)
+
+fig = plt.figure(figsize = [12, 6])
+ax = fig.add_subplot(121)
+plot = ax.imshow(gmean_convedprobs[0].T, #gmean_convedprobs.T, #
+      aspect='auto', origin = 'lower', #extent = np.array([times.min(), times.max(), 0, nclasses]), #vmin = vmin, vmax = vmax,
+      extent = [0, nclasses, times.min(), times.max()],
+      cmap = 'RdBu_r', interpolation = 'none')#, vmin = 1/nclasses - 0.05, vmax = 1/nclasses +0.05 )
+ax.set_xticks(np.arange(0.5, nclasses+.5), labels = np.arange(1, nclasses+1).astype(str))
+ax.set_xlabel('orientation class')
+ax.set_ylabel('time rel. to stim1 onset (s)')
+ax.set_ylim([0, 1])
+ax.set_title('anti clockwise')
 fig.colorbar(plot)
 
-
-conv = np.zeros_like(gmean_centprobs) * np.nan
-theta2 = np.arange((nclasses))/(nclasses)*(np.pi)-np.pi/2
-theta2 = np.cos(theta2)
-
-for tp in range(nsamples):
-    conv[:,tp] = theta2 * (gmean_centprobs[:,tp])#- (1/nclasses))
-
-fig = plt.figure(figsize = [6,4])
-ax = fig.add_subplot(111)
-plot = ax.imshow(conv, aspect='auto', interpolation = 'none', vmin = -0.1, vmax =0.4,
-          extent = [epochs.times.min(), epochs.times.max(), -15, 15],
-          cmap = 'RdBu_r')
+ax = fig.add_subplot(122)
+plot = ax.imshow(gmean_convedprobs[1].T, 
+      aspect='auto', origin = 'lower', #extent = [times.min(), times.max(), 0, nclasses], #vmin = vmin, vmax = vmax,
+      extent = [0, nclasses, times.min(), times.max()],
+      cmap = 'RdBu_r', interpolation = 'none')#, vmin = 1/nclasses - 0.05, vmax = 1/nclasses +0.05 )
+ax.set_xticks(np.arange(0.5, nclasses+.5), labels = np.arange(1, nclasses+1).astype(str))
+ax.set_xlabel('orientation class')
+ax.set_ylabel('time rel. to stim1 onset (s)')
+ax.set_ylim([0, 1])
+ax.set_title('clockwise')
 fig.colorbar(plot)
-

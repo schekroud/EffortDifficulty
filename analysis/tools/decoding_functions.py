@@ -73,11 +73,11 @@ def run_decoding_predproba(data, labels, tp, use_pca, testtype, classifier,  nsp
         estimators.append( ('reduce_dim', skl.decomposition.PCA(n_components = 0.95)) ) #add pca to the pipeline
     
     if classifier == 'ridge':
-        estimators.append( ('clf', skl.linear_model.RidgeClassifier(fit_intercept=True) ) )
+        estimators.append( ('clf', skl.linear_model.RidgeClassifier(fit_intercept=True, class_weight = 'balanced') ) )
     if classifier == 'LDA':
         estimators.append( ('clf', skl.discriminant_analysis.LinearDiscriminantAnalysis() ) )
     if classifier == 'svm':
-        estimators.append( ('clf', skl.svm.LinearSVC(dual = 'auto', random_state=420) ) )
+        estimators.append( ('clf', skl.svm.LinearSVC(dual = 'auto', random_state=420, class_weight = 'balanced') ) )
     if classifier == 'knn':
         estimators.append( ('clf', skl.neighbors.KNeighborsClassifier() ) )#metric = 'mahalanobis',
                                                  #metric_params={'V' :  np.cov(X.T), 'VI': np.linalg.inv(np.cov(X.T))} ) ) )
@@ -105,7 +105,7 @@ def run_decoding_predproba(data, labels, tp, use_pca, testtype, classifier,  nsp
             preds = pipe.predict(x_test)
             tmp[test_index] = preds    
         
-        if classifier == 'ridge':
+        if classifier == 'ridge' or classifier == 'svm':
             decision = pipe.decision_function(x_test) #shape = [nTestindex x classes]
             ps = np.zeros_like(decision) * np.nan
             for idist in range(decision.shape[0]): #loop over trials in the test set
@@ -113,7 +113,7 @@ def run_decoding_predproba(data, labels, tp, use_pca, testtype, classifier,  nsp
                 proba = np.squeeze(softmax(idec))
                 ps[idist] = proba
             predproba = ps
-        elif classifier in ['LDA', 'svm']:
+        elif classifier in ['LDA']:
             predproba = pipe.predict_proba(x_test)
             
         elif classifier == 'knn':
@@ -127,5 +127,5 @@ def run_decoding_predproba(data, labels, tp, use_pca, testtype, classifier,  nsp
             tmp[test_index] = clf.predict(x_test)
             predproba = clf.predict_proba(x_test)
     
-    predprobas[test_index] = predproba
+        predprobas[test_index] = predproba
     return tmp, predprobas #return label predictions for each trial, at this time point

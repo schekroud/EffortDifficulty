@@ -47,10 +47,10 @@ evidence   = np.zeros_like(accuracies)
 use_vischans_only  = True
 use_pca            = False #using pca after selecting only visual channels is really bad for the decoder apparently
 smooth_singletrial = True
-testtype           = 'leaveoneout'
+testtype           = 'rskf'
 classifier         = 'LDA' #LDA and ridge are the two options that work at the moment
 
-nbins = 8
+nbins = 6
 centprobs = np.zeros(shape = [subs.size, nbins-1, nsamples]) #store the average tuning curve for each participant
 
 progressbar.streams.wrap_stderr()
@@ -98,8 +98,8 @@ for i in subs:
     negbins = np.linspace(-60, -30+1, nbins)
     labelbinspos = np.digitize(orientations, posbins)
     labelbinsneg = np.digitize(orientations, negbins)
-    labelbinsneg = np.where(labelbinsneg == 8, 0, labelbinsneg)
-    labelbinspos = np.where(labelbinspos == 0, 0, labelbinspos+7)
+    labelbinsneg = np.where(labelbinsneg == nbins, 0, labelbinsneg)
+    labelbinspos = np.where(labelbinspos == 0, 0, labelbinspos+(nbins-1))
     
     labelbins = np.where(labelbinsneg == 0, labelbinspos, labelbinsneg)
     #pd.value_counts(labelbins)
@@ -160,7 +160,7 @@ plottimes = epochs.times
 #%%
 #plot across-subject accuracy
 accs = sp.ndimage.gaussian_filter1d(accuracies, sigma = 3)
-accs = accuracies.copy()
+# accs = accuracies.copy()
 
 gmean_acc = accs.mean(axis=0)
 sem_acc   = sp.stats.sem(accs, axis = 0, ddof = 0)
@@ -182,7 +182,7 @@ fig.suptitle(f'{classifier}')
 
 
 evs = sp.ndimage.gaussian_filter1d(evidence, sigma=3)
-evs = evidence.copy()
+# evs = evidence.copy()
 
 gmean_ev = evs.mean(axis=0)
 sem_ev   = sp.stats.sem(evs, ddof = 0, axis = 0)
@@ -191,7 +191,7 @@ sem_ev   = sp.stats.sem(evs, ddof = 0, axis = 0)
 fig = plt.figure(figsize = [6,4])
 ax = fig.add_subplot(111)
 ax.axvline(0, ls = 'dashed', color = '#000000', lw = 1)
-ax.axhline(1/nclasses, ls = 'dashed', color = '#000000', lw = 1)
+# ax.axhline(1/nclasses, ls = 'dashed', color = '#000000', lw = 1)
 ax.plot(plottimes, gmean_ev, color = '#3182bd', lw = 2)
 ax.fill_between(plottimes,
                 np.add(gmean_ev, sem_ev), np.subtract(gmean_ev, sem_ev),
@@ -206,7 +206,7 @@ fig.suptitle(f'{classifier}')
 #%% plot by difficulty level
 
 diffaccs = sp.ndimage.gaussian_filter1d(diffaccuracies, sigma=3)
-diffaccs = diffaccuracies.copy()
+# diffaccs = diffaccuracies.copy()
 
 gmean_diffacc = diffaccs.mean(axis=0)
 sem_diffacc   = sp.stats.sem(diffaccs, axis = 0, ddof = 0)
@@ -227,6 +227,7 @@ ax.set_xlabel('time relative to stimulus 1 onset (s)')
 ax.legend(loc = 'lower left')
 fig.suptitle(f'{classifier}')
 # ax.set_ylim([0.065, 0.1])
+ax.set_xlim([-0.5, 1])
 # fig.savefig(op.join(figpath, f'{classifier}_12classdecoding_gmeanAccuracy_usevischansonly{use_vischans_only}_pca{use_pca}.pdf'), dpi = 300)
 
 #%%
@@ -242,7 +243,7 @@ labels, colors = ['diff2', 'diff4', 'diff8', 'diff12'], ['#e41a1c', '#fc8d62', '
 fig = plt.figure(figsize = [6,4])
 ax = fig.add_subplot(111)
 ax.axvline(0, ls = 'dashed', color = '#000000', lw = 1)
-ax.axhline(1/nclasses, ls = 'dashed', color = '#000000', lw = 1)
+# ax.axhline(1/nclasses, ls = 'dashed', color = '#000000', lw = 1)
 for idiff in range(len(labels)):
     ax.plot(plottimes, gmean_diffacc[idiff], lw = 1, label = labels[idiff], color = colors[idiff])
     ax.fill_between(plottimes,
