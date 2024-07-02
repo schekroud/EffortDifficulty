@@ -18,16 +18,16 @@ from matplotlib import pyplot as plt
 %matplotlib
 mne.viz.set_browser_backend('qt')
 
-# sys.path.insert(0, '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-# sys.path.insert(0, 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/analysis/tools')
-sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
-from funcs import getSubjectInfo
-
-# wd = '/Users/sammi/Desktop/postdoc/student_projects/EffortDifficulty'
-# wd = 'C:/Users/sammi/Desktop/Experiments/postdoc/student_projects/EffortDifficulty/'
-wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
+loc = 'laptop'
+if loc == 'laptop':
+    sys.path.insert(0, '/Users/sammichekroud/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+    wd = '/Users/sammichekroud/Desktop/postdoc/student_projects/EffortDifficulty'
+elif loc == 'workstation':
+    sys.path.insert(0, 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty/analysis/tools')
+    wd = 'C:/Users/sammirc/Desktop/postdoc/student_projects/EffortDifficulty' #workstation wd
 os.chdir(wd)
 
+from funcs import getSubjectInfo
 
 subs = np.array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39])
 # subs = np.array([                                                                                                    35, 36, 37, 38, 39])
@@ -67,7 +67,7 @@ event_id = { '1':   1, '10': 10,        #stim1
 
 #skipped 29 and 30 for now, need to amend script
 for i in subs:
-    sub   = dict(loc = 'workstation', id = i)
+    sub   = dict(loc = loc, id = i)
     param = getSubjectInfo(sub)
     print(f'- - - - working on subject {i} - - - -')
     # if not op.exists(param['eeg_preproc']) and i not in [29, 30]:  
@@ -106,30 +106,30 @@ for i in subs:
         
         epoched.metadata = bdata
         
-    #run ica on the epoched data
-    ica = mne.preprocessing.ICA(n_components = 0.95, #cap at 30 components to be useful
-                                method = 'infomax').fit(epoched, picks='eeg',
-          reject_by_annotation = True)
-    
-    eog_epochs = mne.preprocessing.create_eog_epochs(raw, ch_name = ['HEOG', 'VEOG'])
-    eog_inds, eog_scores = ica.find_bads_eog(eog_epochs)
-    ica.plot_scores(eog_scores, eog_inds)
-            
-    ica.plot_components(inst=epoched, contours = 0)
-    print('\n\n- - - - - - - subject %d, %d components to remove: - - - - - - -\n\n'%(i, len(eog_inds)))
-    
-    comps2rem = input('components  remove: ') #need to separate component numbers by comma and space
-    comps2rem = list(map(int, comps2rem.split(', ')))
-    np.savetxt(fname = op.join(param['path'], 'removed_comps', 's%02d_removedcomps_stim2locked.txt'%i),
-               X = comps2rem, fmt = '%i') #record what components were removed
-    ica.exclude.extend(comps2rem) #mark components for removal
-    ica.apply(inst=epoched)
-    
-    epoched.save(fname = param['stim2locked'].replace('stim2locked', 'stim2locked_icaepoched'), fmt = 'double', overwrite = True)
-    
-    plt.close('all')
-    del(raw)
-    del(eog_epochs)
+        #run ica on the epoched data
+        ica = mne.preprocessing.ICA(n_components = 0.95, #cap at 30 components to be useful
+                                    method = 'infomax').fit(epoched, picks='eeg',
+              reject_by_annotation = True)
+        
+        eog_epochs = mne.preprocessing.create_eog_epochs(raw, ch_name = ['HEOG', 'VEOG'])
+        eog_inds, eog_scores = ica.find_bads_eog(eog_epochs)
+        ica.plot_scores(eog_scores, eog_inds)
+                
+        ica.plot_components(inst=epoched, contours = 0)
+        print('\n\n- - - - - - - subject %d, %d components to remove: - - - - - - -\n\n'%(i, len(eog_inds)))
+        
+        comps2rem = input('components  remove: ') #need to separate component numbers by comma and space
+        comps2rem = list(map(int, comps2rem.split(', ')))
+        np.savetxt(fname = op.join(param['path'], 'removed_comps', 's%02d_removedcomps_stim2locked.txt'%i),
+                   X = comps2rem, fmt = '%i') #record what components were removed
+        ica.exclude.extend(comps2rem) #mark components for removal
+        ica.apply(inst=epoched)
+        
+        epoched.save(fname = param['stim2locked'].replace('stim2locked', 'stim2locked_icaepoched'), fmt = 'double', overwrite = True)
+        
+        plt.close('all')
+        del(raw)
+        del(eog_epochs)
     
     elif i in [29, 30]:
         raw1 = mne.io.read_raw_curry(fname = param['raweeg'], preload = True)
@@ -262,7 +262,7 @@ for i in subs:
 #%%
 #to resample and re-save the already ica cleaned data...
 for i in subs:
-    sub   = dict(loc = 'workstation', id = i)
+    sub   = dict(loc = loc, id = i)
     param = getSubjectInfo(sub)
     print(f'- - - - working on subject {i} - - - -')
     

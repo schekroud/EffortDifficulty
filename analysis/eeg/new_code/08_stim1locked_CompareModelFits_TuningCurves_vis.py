@@ -66,6 +66,12 @@ for i in subs:
     d2 = np.load(op.join(wd, 'data', 'tuningcurves', 'paramfits', f's{i}_paramfits_fminsearch_binstep{binstep}_binwidth{binwidth}.npy'))
     d3 = np.load(op.join(wd, 'data', 'tuningcurves', 'paramfits', f's{i}_paramfits_curvefitinit_binstep{binstep}_binwidth{binwidth}.npy'))
     
+    take_abs = False
+    if take_abs:
+        d1[:,2,:] = np.abs(d1[:,2,:]) #cosine is symmetrical, so alpha should only be one sign. if not fixing this, it affects the average a lot
+        d2[:,2,:] = np.abs(d2[:,2,:]) 
+        # d3[:,2,:] = np.abs(d3[:,2,:]) 
+    
     d1m[subcount] = np.nanmean(d1, axis=0)
     d2m[subcount] = np.nanmean(d2, axis=0)
     d3m[subcount] = np.nanmean(d3, axis=0)

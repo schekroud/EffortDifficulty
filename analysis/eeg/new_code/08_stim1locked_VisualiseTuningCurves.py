@@ -97,35 +97,35 @@ ax.imshow(gmean_demean, aspect = 'auto', origin = 'lower', cmap = 'RdBu_r', inte
 fig = plt.figure(figsize = [15, 3])
 ax = fig.add_subplot(141)
 tinds = np.logical_and(np.greater_equal(times, -0.5), np.less_equal(times, -0.2))
-tmpdat = np.nanmean(gmean_demean[:,tinds], axis=1) #average across time
+tmpdat = np.nanmean(gmean_tc[:,tinds], axis=1) #average across time
 ax.plot(binmids, tmpdat)
 ax.set_xlabel('orientation')
 ax.set_title('mean distances 0.5-0.2s prestim')
-ax.set_ylim([-0.15, 0.15])
+# ax.set_ylim([-0.15, 0.15])
 
 ax = fig.add_subplot(142)
 tinds = np.logical_and(np.greater_equal(times, 0.1), np.less_equal(times, 0.3))
-tmpdat = np.nanmean(gmean_demean[:,tinds], axis=1) #average across time
+tmpdat = np.nanmean(gmean_tc[:,tinds], axis=1) #average across time
 ax.plot(binmids, tmpdat)
 ax.set_xlabel('orientation')
 ax.set_title('mean distances 0.1-0.3s post-stim')
-ax.set_ylim([-0.15, 0.15])
+# ax.set_ylim([-0.15, 0.15])
 
 ax = fig.add_subplot(143)
 tinds = np.logical_and(np.greater_equal(times, 0.4), np.less_equal(times, 0.7))
-tmpdat = np.nanmean(gmean_demean[:,tinds], axis=1) #average across time
+tmpdat = np.nanmean(gmean_tc[:,tinds], axis=1) #average across time
 ax.plot(binmids, tmpdat)
 ax.set_xlabel('orientation')
 ax.set_title('mean distances 0.4-0.7s post-stim')
-ax.set_ylim([-0.15, 0.15])
+# ax.set_ylim([-0.15, 0.15])
 
 ax = fig.add_subplot(144)
 tinds = np.logical_and(np.greater_equal(times, 0.8), np.less_equal(times, 1.2))
-tmpdat = np.nanmean(gmean_demean[:,tinds], axis=1) #average across time
+tmpdat = np.nanmean(gmean_tc[:,tinds], axis=1) #average across time
 ax.plot(binmids, tmpdat)
 ax.set_xlabel('orientation')
 ax.set_title('mean distances 0.8-1.2s post-stim')
-ax.set_ylim([-0.15, 0.15])
+# ax.set_ylim([-0.15, 0.15])
 
 fig.tight_layout()
         
