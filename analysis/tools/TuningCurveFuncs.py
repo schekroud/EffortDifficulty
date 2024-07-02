@@ -151,6 +151,9 @@ def makeTuningCurve(data, orientations, binstep, binwidth, weight_trials=True, f
 def cosmodel(thetas, B0, B1, alpha):
     return B0 + (B1 * np.cos(alpha * thetas))
 
+def cosmodel2(thetas, B1, alpha):
+    return B1 * np.cos(alpha * thetas)
+
 def fmin_func(params, x, binmids):
     '''
     x       - distances for this time point and trial
@@ -163,7 +166,20 @@ def fmin_func(params, x, binmids):
     ssr = np.sum(np.power(resids,2))
     return ssr
 
-def getCosineFit(angles, data, fitType = 'curve', p0 = None, method = 'trf', disp = 0, maxfev = 5000):
+def fmin_func2(params, x, binmids):
+    '''
+    x       - distances for this time point and trial
+    params  - parameters to try on this iteration
+    binmids - radian values for bin middles being used  
+    '''
+    x_mean = np.nanmean(x) #get the across bin mean distance
+    [b0, b1, alpha] = params
+    fitted = x_mean + b0 + (b1 * np.cos(alpha * binmids)) #model this
+    resids = np.subtract(x, fitted)
+    ssr = np.sum(np.power(resids,2))
+    return ssr
+
+def getCosineFit(angles, data, fitType = 'curve', bounds = None, p0 = None, method = 'trf', disp = 0, maxfev = 5000):
     '''
     
     use `sp.optimize.curve_fit`, using non-linear squares to find the optimal cosine fit parameters to tuning curve data.
@@ -193,16 +209,63 @@ def getCosineFit(angles, data, fitType = 'curve', p0 = None, method = 'trf', dis
     idat = data[~isnan]
     
     if fitType == 'curve': #use scipy inbuilt curve optimisation
-        fitparams = sp.optimize.curve_fit(cosmodel, imids, idat,
-                                          p0 = p0, #add initial parameter guess if supplied
-                                          maxfev = maxfev, method = method)[0] #get just the optimal params for this cosine fit
+        if bounds != None    :
+            fitparams = sp.optimize.curve_fit(cosmodel, imids, idat, bounds = bounds,
+                                              p0 = p0, #add initial parameter guess if supplied
+                                              maxfev = maxfev, method = method)[0] #get just the optimal params for this cosine fit
+        else:
+            fitparams = sp.optimize.curve_fit(cosmodel, imids, idat,
+                                              p0 = p0, #add initial parameter guess if supplied
+                                              maxfev = maxfev, method = method)[0] #get just the optimal params for this cosine fit
+    if fitType == 'curve2':
+        fitparams = sp.optimize.curve_fit(cosmodel2, imids, idat,
+                                          p0 = p0,
+                                          maxfev = maxfev, method = method)[0]
     elif fitType == 'fmin':
         fitparams = sp.optimize.fmin(func = fmin_func, #function to minimize
                                      x0 = [idat.mean(), 1, 1], #initial parameter guesses
                                      args = (idat, imids),
                                      disp = disp) #whether or not to display fminsearch convergence messages
+    elif fitType == 'fmin2':
+        fitparams = sp.optimize.fmin(func = fmin_func2, #function to minimize
+                                     x0 = [1, 1, 1],
+                                     args = (idat, imids), disp = disp)
     return fitparams, imids, idat
 
-            
-            
-            
+
+def basic_cosine(thetas, alpha):
+    return np.cos(alpha * thetas)
+
+def fixedAlphaCosine(thetas, B0, B1):
+    '''
+    thetas - angles for bins, already pre-multiplied by our alpha scaling factor
+    '''
+    
+    return B0 + B1*np.cos(thetas)
+
+def b1_cosine(thetas, B1):
+    '''
+    thetas - angles for bins, already pre-multiplied by alpha scaling factor
+    '''
+    return B1 * np.cos(thetas)
+
+def fullCosineModel(thetas, B0, B1, alpha):
+    return B0 + (B1 * np.cos(alpha * thetas))
+
+def fitAlpha(thetas, distances, p0 = None, bounds = None):
+    '''
+    thetas - feature values (orientation) for the centre of each bin
+    distances - z-scored, inverse (x -1) mahalanobis distances of test trial to each reference bin
+    '''
+    if bounds == None:
+        fitparams = sp.optimize.curve_fit(basic_cosine, thetas, distances,
+                                          p0 = p0, maxfev = 5000, method = 'trf', nan_policy='omit')
+    else:
+        fitparams = sp.optimize.curve_fit(basic_cosine, thetas, distances,
+                                          p0 = p0, bounds = bounds,
+                                          maxfev = 5000, method = 'trf', nan_policy='omit')
+    
+    return fitparams[0] #return the optimized recovered parameters
+
+
+
